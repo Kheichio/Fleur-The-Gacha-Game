@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { BannerType, Character, CharacterSaveData } from '../types';
+import type { BannerType, Character, CharacterSaveData, EquipmentItem, PullResult } from '../types';
 import { STAGES } from '../data/stages';
-import { ADVENTURE_PULL_COST, DEMON_PULL_COST, DUPLICATE_REFUND, STANDARD_PULL_COST, pullOne } from '../systems/gacha';
+import { ADVENTURE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, DUPLICATE_REFUND, PITY_THRESHOLD, STANDARD_PULL_COST, pullOne } from '../systems/gacha';
 import { levelFromXp, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
+import { upgradeItem, UPGRADE_COSTS } from '../data/equipment';
 
 interface GameState {
   coins: number;
@@ -12,10 +13,13 @@ interface GameState {
   characterData: Record<string, CharacterSaveData>;
   activeTeamIds: string[];
   unlockedStageIds: string[];
-  lastPullResults: Character[];
+  lastPullResults: PullResult[];
   lastPullBanner: BannerType;
   items: Record<string, number>;
   currentNodeId: string;
+  inventory: EquipmentItem[];
+  equipped: Record<string, { weapon?: string; armor?: string; accessory?: string }>;
+  pityCounters: Record<BannerType, number>;
 
   pull: (count: number, banner: BannerType) => void;
   setTeam: (ids: string[]) => void;
@@ -27,7 +31,12 @@ interface GameState {
   enhance: (id: string) => void;
   spendItem: (itemId: string) => void;
   moveToNode: (nodeId: string) => void;
+  upgradeEquipment: (uid: string) => void;
+  equipItem: (charId: string, itemUid: string) => void;
+  unequipItem: (charId: string, slot: 'weapon' | 'armor' | 'accessory') => void;
 }
+
+const DEFAULT_PITY: Record<BannerType, number> = { standard: 0, adventure: 0, demon: 0, beyond: 0 };
 
 export const useGameStore = create<GameState>()(
   persist(
@@ -42,36 +51,69 @@ export const useGameStore = create<GameState>()(
       lastPullBanner: 'standard',
       items: { 'healing-herb': 3 },
       currentNodeId: 'mossgate',
+      inventory: [],
+      equipped: {},
+      pityCounters: { ...DEFAULT_PITY },
 
       pull: (count, banner) => {
         const state = get();
+        const pity = { ...(state.pityCounters ?? DEFAULT_PITY) };
+
         if (banner === 'standard') {
           const cost = STANDARD_PULL_COST * count;
           if (state.coins < cost) return;
-          const results: Character[] = [];
-          let delta = -cost;
+          const results: PullResult[] = [];
+          let coinsDelta = -cost;
           const newCounts = { ...state.ownedCounts };
+          const newInventory = [...(state.inventory ?? [])];
+          let currentPity = pity[banner] ?? 0;
+
           for (let i = 0; i < count; i++) {
-            const c = pullOne('standard');
-            results.push(c);
-            if (newCounts[c.id]) delta += DUPLICATE_REFUND;
-            newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
+            currentPity++;
+            const forceLegendary = currentPity >= PITY_THRESHOLD;
+            const result = pullOne('standard', forceLegendary);
+            results.push(result);
+
+            if (result.type === 'character') {
+              const c = result.character;
+              if (newCounts[c.id]) coinsDelta += DUPLICATE_REFUND;
+              newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
+              if (c.rarity === 'Legendary') currentPity = 0;
+            } else {
+              newInventory.push(result.item);
+              if (result.item.rarity === 'Legendary') currentPity = 0;
+            }
           }
-          set({ coins: state.coins + delta, ownedCounts: newCounts, lastPullResults: results, lastPullBanner: 'standard' });
+          pity[banner] = currentPity;
+          set({ coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: 'standard', pityCounters: pity });
         } else {
-          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : ADVENTURE_PULL_COST;
+          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : ADVENTURE_PULL_COST;
           const cost = rubyCost * count;
           if (state.rubies < cost) return;
-          const results: Character[] = [];
+          const results: PullResult[] = [];
           let coinsDelta = 0;
           const newCounts = { ...state.ownedCounts };
+          const newInventory = [...(state.inventory ?? [])];
+          let currentPity = pity[banner] ?? 0;
+
           for (let i = 0; i < count; i++) {
-            const c = pullOne(banner);
-            results.push(c);
-            if (newCounts[c.id]) coinsDelta += DUPLICATE_REFUND;
-            newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
+            currentPity++;
+            const forceLegendary = currentPity >= PITY_THRESHOLD;
+            const result = pullOne(banner, forceLegendary);
+            results.push(result);
+
+            if (result.type === 'character') {
+              const c = result.character;
+              if (newCounts[c.id]) coinsDelta += DUPLICATE_REFUND;
+              newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
+              if (c.rarity === 'Legendary') currentPity = 0;
+            } else {
+              newInventory.push(result.item);
+              if (result.item.rarity === 'Legendary') currentPity = 0;
+            }
           }
-          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, lastPullResults: results, lastPullBanner: banner });
+          pity[banner] = currentPity;
+          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: banner, pityCounters: pity });
         }
       },
 
@@ -138,6 +180,50 @@ export const useGameStore = create<GameState>()(
       },
 
       moveToNode: (nodeId) => set({ currentNodeId: nodeId }),
+
+      upgradeEquipment: (uid) => {
+        set((s) => {
+          const inv = s.inventory ?? [];
+          const idx = inv.findIndex((it) => it.uid === uid);
+          if (idx === -1) return s;
+          const item = inv[idx];
+          if (item.level >= 5) return s;
+          const cost = UPGRADE_COSTS[item.level];
+          if (s.coins < cost) return s;
+          const upgraded = upgradeItem(item);
+          const newInv = [...inv];
+          newInv[idx] = upgraded;
+          return { coins: s.coins - cost, inventory: newInv };
+        });
+      },
+
+      equipItem: (charId, itemUid) => {
+        set((s) => {
+          const inv = s.inventory ?? [];
+          const item = inv.find((it) => it.uid === itemUid);
+          if (!item) return s;
+          const slot = item.slot;
+          const eq = { ...(s.equipped ?? {}) };
+          // Unequip from anyone else who has this item
+          for (const [cid, slots] of Object.entries(eq)) {
+            if (slots[slot] === itemUid) {
+              eq[cid] = { ...slots, [slot]: undefined };
+            }
+          }
+          const charSlots = eq[charId] ?? {};
+          eq[charId] = { ...charSlots, [slot]: itemUid };
+          return { equipped: eq };
+        });
+      },
+
+      unequipItem: (charId, slot) => {
+        set((s) => {
+          const eq = { ...(s.equipped ?? {}) };
+          const charSlots = eq[charId] ?? {};
+          eq[charId] = { ...charSlots, [slot]: undefined };
+          return { equipped: eq };
+        });
+      },
     }),
     { name: 'fleur-save-v3' }
   )

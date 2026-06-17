@@ -103,7 +103,7 @@ export const CHARACTER_POOL: Character[] = [
   },
   {
     id: 'tomoe-yoshimi',
-    name: '巴吉見 Tomoe Yoshimi',
+    name: 'Tomoe Yoshimi',
     rarity: 'Epic',
     stats: { hp: 115, physAtk: 38, magAtk: 8, physDef: 10, magDef: 8, critRate: 22, speed: 19 },
     skill: { name: 'Demon Gale Strike', multiplier: 2.5, cooldown: 3, type: 'melee' },
@@ -130,11 +130,12 @@ export const CHARACTER_POOL: Character[] = [
     description: 'A Pure Elf Demi-God of immeasurable grace. In her true form she stands three metres tall and the world trembles. In her mortal guise she walks gently — but never unaware.',
   },
   {
-    id: 'fleur-sovereign',
-    name: 'Fleur Sovereign',
+    id: 'anwaltin-von-berater',
+    name: 'Anwältin Von Berater',
     rarity: 'Legendary',
-    stats: { hp: 170, physAtk: 14, magAtk: 44, physDef: 20, magDef: 22, critRate: 14, speed: 15 },
-    skill: { name: 'Eternal Bloom', multiplier: 2.8, cooldown: 4, type: 'magic' },
-    description: 'The supreme guardian of the Fleur realm. Eternal, unknowable, and inevitable. They say those who face her bloom once, then never again.',
+    stats: { hp: 175, physAtk: 12, magAtk: 52, physDef: 14, magDef: 30, critRate: 15, speed: 16 },
+    skill: { name: 'Event Horizon', multiplier: 3.2, cooldown: 4, type: 'magic' },
+    image: '/images/characters/anwaltin.png',
+    description: 'A woman of modern society who wields incomprehensible power. Kind and sweet on the surface, but cross her and she will collapse reality itself. Her black holes devour all, and her mind control bends the strongest wills.',
   },
 ];

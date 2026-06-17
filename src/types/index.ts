@@ -1,5 +1,6 @@
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
-export type BannerType = 'standard' | 'adventure' | 'demon';
+export type BannerType = 'standard' | 'adventure' | 'demon' | 'beyond';
+export type StatKey = 'hp' | 'physAtk' | 'magAtk' | 'physDef' | 'magDef' | 'critRate' | 'speed';
 
 export interface Skill {
   name: string;
@@ -33,6 +34,20 @@ export interface CharacterSaveData {
   xp: number;
   enhancement: number;
 }
+
+export interface EquipmentItem {
+  uid: string;
+  name: string;
+  rarity: Rarity;
+  slot: 'weapon' | 'armor' | 'accessory';
+  mainStat: { stat: StatKey; value: number };
+  subStats: { stat: StatKey; value: number }[];
+  level: number;
+}
+
+export type PullResult =
+  | { type: 'character'; character: Character }
+  | { type: 'item'; item: EquipmentItem };
 
 export interface Stage {
   id: string;

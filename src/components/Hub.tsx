@@ -1,6 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 
-type NavScreen = 'contract' | 'party' | 'travel' | 'characters';
+type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage';
 
 
 interface Props {
@@ -14,7 +14,12 @@ export default function Hub({ onNavigate }: Props) {
   const addRubies = useGameStore((s) => s.addRubies);
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center bg-slate-950 p-6">
+    <div
+      className="relative flex min-h-screen flex-col items-center p-6"
+      style={{
+        background: 'linear-gradient(160deg, #0a0a1a 0%, #0d1117 30%, #12081f 60%, #0a0e1a 100%)',
+      }}
+    >
       {/* Currency — top right */}
       <div className="absolute right-4 top-4 flex flex-col items-end gap-1.5 z-10">
         <div className="flex items-center gap-2 rounded-full border border-yellow-600/40 bg-slate-900/90 px-3.5 py-1.5 shadow-lg">
@@ -32,8 +37,8 @@ export default function Hub({ onNavigate }: Props) {
         <div className="text-[10px] font-semibold tracking-[0.5em] text-slate-500 uppercase mb-2">
           ✦ &nbsp; ✦ &nbsp; ✦
         </div>
-        <h1 className="title-main text-6xl sm:text-7xl font-black tracking-widest leading-none">
-          FLEUR
+        <h1 className="title-main text-5xl sm:text-6xl font-black tracking-widest leading-none text-center">
+          FLEUR'S DESOLATION
         </h1>
         <div className="title-sub mt-2 text-base sm:text-xl font-semibold tracking-[0.3em] uppercase">
           The Gacha Game
@@ -43,7 +48,7 @@ export default function Hub({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Nav buttons — 2×2 grid */}
+      {/* Nav buttons — 2×2 grid + luggage below */}
       <div className="grid w-full max-w-sm grid-cols-2 gap-3">
         <button
           onClick={() => onNavigate('contract')}
@@ -79,6 +84,18 @@ export default function Hub({ onNavigate }: Props) {
           <span className="text-4xl transition-transform duration-200 group-hover:scale-110">🗺️</span>
           <span className="text-base font-bold text-amber-200">Travel</span>
           <span className="text-[11px] font-normal text-amber-400/70">Explore the world</span>
+        </button>
+      </div>
+
+      {/* Luggage button — centered below grid */}
+      <div className="mt-3 w-full max-w-sm">
+        <button
+          onClick={() => onNavigate('luggage')}
+          className="group flex w-full flex-col items-center gap-2 rounded-2xl border border-orange-500/30 bg-gradient-to-b from-orange-900/50 to-slate-900/80 px-5 py-5 shadow-lg transition duration-200 hover:scale-105 hover:border-orange-400/60 hover:from-orange-800/60"
+        >
+          <span className="text-4xl transition-transform duration-200 group-hover:scale-110">🧳</span>
+          <span className="text-base font-bold text-orange-200">Luggage</span>
+          <span className="text-[11px] font-normal text-orange-400/70">Items &amp; equipment</span>
         </button>
       </div>
 

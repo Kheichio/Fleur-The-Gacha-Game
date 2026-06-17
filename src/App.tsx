@@ -5,6 +5,7 @@ import PartyScreen from './components/RosterScreen';
 import TravelScreen from './components/TravelScreen';
 import BattleScreen from './components/BattleScreen';
 import CharacterScreen from './components/CharacterScreen';
+import LuggageScreen from './components/LuggageScreen';
 
 type Screen =
   | 'hub'
@@ -12,6 +13,7 @@ type Screen =
   | 'party'
   | 'travel'
   | 'characters'
+  | 'luggage'
   | { battle: string; exitTo: 'hub' | 'travel' };
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
       {screen === 'contract' && <ContractScreen onBack={() => setScreen('hub')} />}
       {screen === 'party' && <PartyScreen onBack={() => setScreen('hub')} />}
       {screen === 'characters' && <CharacterScreen onBack={() => setScreen('hub')} />}
+      {screen === 'luggage' && <LuggageScreen onBack={() => setScreen('hub')} />}
       {screen === 'travel' && (
         <TravelScreen
           onBack={() => setScreen('hub')}

@@ -196,13 +196,14 @@ export default function PartyScreen({ onBack }: Props) {
 
                 {char ? (
                   <>
-                    {/* Art area */}
-                    <div className="flex-1 overflow-hidden">
+                    {/* Art area — fixed max height */}
+                    <div className="flex-1 overflow-hidden" style={{ maxHeight: 'calc(100% - 80px)' }}>
                       {char.image ? (
                         <img
                           src={char.image}
                           alt={char.name}
                           className="h-full w-full object-cover object-top"
+                          style={{ maxHeight: '400px' }}
                           onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
                         />
                       ) : (

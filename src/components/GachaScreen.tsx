@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
-import { ADVENTURE_PULL_COST, DEMON_PULL_COST, STANDARD_PULL_COST } from '../systems/gacha';
-import type { BannerType, Character, Rarity } from '../types';
+import { ADVENTURE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, STANDARD_PULL_COST, PITY_THRESHOLD } from '../systems/gacha';
+import { SLOT_EMOJI, STAT_LABELS } from '../data/equipment';
+import type { BannerType, Character, EquipmentItem, PullResult, Rarity } from '../types';
 import CurrencyBar from './CurrencyBar';
 
 interface Props {
@@ -41,7 +42,7 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyIcon: '🪙',
     currencyLabel: 'Coins',
     costPer: STANDARD_PULL_COST,
-    ratesText: 'Common 60%  ·  Rare 30%  ·  Epic 8%  ·  Legendary 2%',
+    ratesText: 'Common 65%  ·  Rare 28%  ·  Epic 6.5%  ·  Legendary 0.5%',
     featuredIds: [],
     decorSymbol: '✦',
   },
@@ -58,7 +59,7 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyIcon: '💎',
     currencyLabel: 'Rubies',
     costPer: ADVENTURE_PULL_COST,
-    ratesText: 'Common 40%  ·  Rare 40%  ·  Epic 15%  ·  Legendary 5%',
+    ratesText: 'Common 50%  ·  Rare 35%  ·  Epic 13.5%  ·  Legendary 1.5%',
     featuredIds: ['fleur-theos', 'auxentios-brigach', 'roza-defteros', 'casilda'],
     decorSymbol: '◆',
   },
@@ -75,9 +76,26 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyIcon: '💎',
     currencyLabel: 'Rubies',
     costPer: DEMON_PULL_COST,
-    ratesText: 'Common 35%  ·  Rare 38%  ·  Epic 22%  ·  Legendary 5%',
+    ratesText: 'Common 45%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 2%',
     featuredIds: ['tomoe-yoshimi'],
     decorSymbol: '⚔',
+  },
+  {
+    id: 'beyond',
+    name: 'Beyond the Boundaries of Comprehension',
+    subtitle: 'Chapter 5',
+    tag: 'LIMITED',
+    tagBg: 'bg-violet-800/90',
+    bgGradient: 'linear-gradient(160deg, #0d0620 0%, #08041a 50%, #120830 100%)',
+    glowColor: 'rgba(140, 60, 220, 0.25)',
+    accentColor: 'text-violet-300',
+    titleColor: 'text-violet-100',
+    currencyIcon: '💎',
+    currencyLabel: 'Rubies',
+    costPer: BEYOND_PULL_COST,
+    ratesText: 'Common 45%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 2%',
+    featuredIds: ['anwaltin-von-berater'],
+    decorSymbol: '◉',
   },
 ];
 
@@ -94,9 +112,10 @@ export default function GachaScreen({ onBack }: Props) {
   const coins  = useGameStore((s) => s.coins);
   const rubies = useGameStore((s) => s.rubies);
   const pull   = useGameStore((s) => s.pull);
+  const pityCounters = useGameStore((s) => s.pityCounters) ?? { standard: 0, adventure: 0, demon: 0, beyond: 0 };
 
   const [bannerIdx, setBannerIdx]       = useState(0);
-  const [pullResults, setPullResults]   = useState<Character[]>([]);
+  const [pullResults, setPullResults]   = useState<PullResult[]>([]);
   const [revealedCount, setRevealedCount] = useState(0);
   const [showOverlay, setShowOverlay]   = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -105,10 +124,11 @@ export default function GachaScreen({ onBack }: Props) {
   const balance   = banner.id === 'standard' ? coins : rubies;
   const canAfford1  = balance >= banner.costPer;
   const canAfford10 = balance >= banner.costPer * 10;
+  const pity = pityCounters[banner.id] ?? 0;
 
   useEffect(() => {
     if (!showOverlay || revealedCount >= pullResults.length) return;
-    const delay = revealedCount === 0 ? 250 : 360;
+    const delay = revealedCount === 0 ? 400 : 500;
     const t = setTimeout(() => setRevealedCount((c) => c + 1), delay);
     return () => clearTimeout(t);
   }, [showOverlay, revealedCount, pullResults.length]);
@@ -157,12 +177,12 @@ export default function GachaScreen({ onBack }: Props) {
         <CurrencyBar />
       </div>
 
-      {/* Slider */}
+      {/* Slider — with horizontal margin */}
       <div
-        className="relative flex-1 overflow-hidden"
+        className="relative flex-1 overflow-hidden mx-6 mt-4 rounded-2xl"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        style={{ minHeight: '360px' }}
+        style={{ minHeight: '400px' }}
       >
         {/* Track */}
         <div
@@ -173,7 +193,7 @@ export default function GachaScreen({ onBack }: Props) {
           }}
         >
           {BANNER_CONFIGS.map((b) => (
-            <BannerPanel key={b.id} banner={b} />
+            <BannerPanel key={b.id} banner={b} pity={pityCounters[b.id] ?? 0} />
           ))}
         </div>
 
@@ -206,8 +226,11 @@ export default function GachaScreen({ onBack }: Props) {
       </div>
 
       {/* Pull controls */}
-      <div className="flex-shrink-0 border-t border-slate-800/70 bg-slate-950/80 px-4 py-4">
-        <div className="mb-3 text-center text-[11px] text-slate-600">{banner.ratesText}</div>
+      <div className="flex-shrink-0 border-t border-slate-800/70 bg-slate-950/80 px-4 py-4 mt-2">
+        <div className="mb-1 text-center text-[11px] text-slate-600">{banner.ratesText}</div>
+        <div className="mb-3 text-center text-[10px] text-slate-700">
+          Pity: {pity}/{PITY_THRESHOLD} · Guaranteed {RARITY_SYM.Legendary} at {PITY_THRESHOLD}
+        </div>
         <div className="flex justify-center gap-3">
           <button
             disabled={!canAfford1}
@@ -258,14 +281,14 @@ export default function GachaScreen({ onBack }: Props) {
   );
 }
 
-function BannerPanel({ banner }: { banner: BannerConfig }) {
+function BannerPanel({ banner, pity }: { banner: BannerConfig; pity: number }) {
   const featuredChars = banner.featuredIds
     .map((id) => CHARACTER_POOL.find((c) => c.id === id))
     .filter((c): c is Character => Boolean(c));
 
   return (
     <div
-      className="relative flex flex-col items-center justify-center overflow-hidden px-6 py-10"
+      className="relative flex flex-col items-center justify-end overflow-hidden px-6 pb-14 pt-6"
       style={{ width: `${100 / BANNER_CONFIGS.length}%`, background: banner.bgGradient }}
     >
       {/* Radial glow */}
@@ -284,7 +307,7 @@ function BannerPanel({ banner }: { banner: BannerConfig }) {
         {banner.decorSymbol}
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-5 text-center">
+      <div className="relative z-10 flex flex-col items-center gap-4 text-center">
         {/* Tag chip */}
         <div className={`rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-white/90 ${banner.tagBg}`}>
           {banner.tag}
@@ -294,7 +317,7 @@ function BannerPanel({ banner }: { banner: BannerConfig }) {
         <div>
           <h2
             style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }}
-            className={`text-2xl font-black leading-snug sm:text-3xl ${banner.titleColor}`}
+            className={`text-xl font-black leading-snug sm:text-2xl ${banner.titleColor}`}
           >
             {banner.name}
           </h2>
@@ -342,6 +365,11 @@ function BannerPanel({ banner }: { banner: BannerConfig }) {
         <div className={`rounded-full border border-current/20 px-4 py-1 text-xs font-semibold ${banner.accentColor}`}>
           {banner.currencyIcon} {banner.currencyLabel} · {banner.costPer} per pull
         </div>
+
+        {/* Items note */}
+        <div className="text-[10px] text-white/25 italic">
+          Pulls may contain equipment items
+        </div>
       </div>
     </div>
   );
@@ -353,25 +381,32 @@ function PullOverlay({
   onSkip,
   onClose,
 }: {
-  results: Character[];
+  results: PullResult[];
   revealedCount: number;
   onSkip: () => void;
   onClose: () => void;
 }) {
   const allRevealed = revealedCount >= results.length;
   const isSingle = results.length === 1;
+  const hasEpicPlus = results.some((r) => {
+    const rarity = r.type === 'character' ? r.character.rarity : r.item.rarity;
+    return rarity === 'Epic' || rarity === 'Legendary';
+  });
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm">
-      <div className="w-full max-w-lg px-4">
+    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm ${hasEpicPlus ? 'bg-black/80' : 'bg-black/90'}`}>
+      {/* Epic+ background particles */}
+      {hasEpicPlus && <EpicParticles />}
+
+      <div className="relative z-10 w-full max-w-2xl px-4">
         {isSingle ? (
           <div className="mb-8 flex justify-center">
-            {results.length > 0 && <ResultCard char={results[0]} revealed={revealedCount >= 1} large />}
+            {results.length > 0 && <ResultCardLarge result={results[0]} revealed={revealedCount >= 1} />}
           </div>
         ) : (
-          <div className="mb-6 grid grid-cols-5 gap-2">
-            {results.map((char, i) => (
-              <ResultCard key={i} char={char} revealed={i < revealedCount} />
+          <div className="mb-6 grid grid-cols-5 gap-3">
+            {results.map((result, i) => (
+              <ResultCard key={i} result={result} revealed={i < revealedCount} />
             ))}
           </div>
         )}
@@ -398,39 +433,131 @@ function PullOverlay({
   );
 }
 
-function ResultCard({ char, revealed, large = false }: { char: Character; revealed: boolean; large?: boolean }) {
-  const s = RARITY_CARD[char.rarity];
+function EpicParticles() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {Array.from({ length: 20 }).map((_, i) => (
+        <div
+          key={i}
+          className="epic-particle absolute rounded-full"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            width: `${2 + Math.random() * 4}px`,
+            height: `${2 + Math.random() * 4}px`,
+            background: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#a78bfa' : '#f472b6',
+            animationDelay: `${Math.random() * 3}s`,
+            animationDuration: `${2 + Math.random() * 3}s`,
+          }}
+        />
+      ))}
+      {/* Central glow burst */}
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full epic-glow"
+        style={{
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%)',
+        }}
+      />
+    </div>
+  );
+}
+
+function ResultCardLarge({ result, revealed }: { result: PullResult; revealed: boolean }) {
+  if (result.type === 'character') {
+    const char = result.character;
+    const s = RARITY_CARD[char.rarity];
+    const isEpicPlus = char.rarity === 'Epic' || char.rarity === 'Legendary';
+    return (
+      <div
+        className={`relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto h-72 w-56 ${
+          revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-6 opacity-0'
+        } ${isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
+      >
+        <div className="absolute inset-0">
+          {char.image ? (
+            <img src={char.image} alt={char.name} className="h-full w-full object-cover object-top"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center font-black text-white/10" style={{ fontSize: '5rem' }}>
+              {char.name.charAt(0)}
+            </div>
+          )}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pb-3 pt-10">
+          <div className="text-center text-base font-bold text-white">{char.name}</div>
+          <div className={`text-center text-sm ${s.text}`}>{RARITY_SYM[char.rarity]} {char.rarity}</div>
+        </div>
+      </div>
+    );
+  }
+  return <ItemCardLarge item={result.item} revealed={revealed} />;
+}
+
+function ItemCardLarge({ item, revealed }: { item: EquipmentItem; revealed: boolean }) {
+  const s = RARITY_CARD[item.rarity];
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} ${
-        large ? 'mx-auto h-56 w-44' : 'h-28 w-full'
-      } ${revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-3 opacity-0'}`}
+      className={`relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto flex h-72 w-56 flex-col items-center justify-center ${
+        revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-6 opacity-0'
+      }`}
     >
-      <div className="absolute inset-0">
-        {char.image ? (
-          <img
-            src={char.image}
-            alt={char.name}
-            className="h-full w-full object-cover object-top"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
-          />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center font-black text-white/10"
-            style={{ fontSize: large ? '4.5rem' : '2.5rem' }}
-          >
-            {char.name.charAt(0)}
+      <div className="text-5xl mb-3">{SLOT_EMOJI[item.slot]}</div>
+      <div className="text-base font-bold text-white text-center px-2">{item.name}</div>
+      <div className={`text-sm ${s.text}`}>{RARITY_SYM[item.rarity]} {item.rarity}</div>
+      <div className="mt-3 rounded-lg bg-black/40 px-3 py-1.5 text-xs text-white/70">
+        {STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({ result, revealed }: { result: PullResult; revealed: boolean }) {
+  if (result.type === 'character') {
+    const char = result.character;
+    const s = RARITY_CARD[char.rarity];
+    const isEpicPlus = char.rarity === 'Epic' || char.rarity === 'Legendary';
+    return (
+      <div
+        className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} h-36 w-full ${
+          revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-3 opacity-0'
+        } ${isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
+      >
+        <div className="absolute inset-0">
+          {char.image ? (
+            <img src={char.image} alt={char.name} className="h-full w-full object-cover object-top"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center font-black text-white/10" style={{ fontSize: '2.5rem' }}>
+              {char.name.charAt(0)}
+            </div>
+          )}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 pb-1.5 pt-6">
+          <div className="truncate text-center text-[10px] font-bold leading-tight text-white">
+            {char.name.split(' ')[0]}
           </div>
-        )}
-      </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 pb-1.5 pt-6">
-        <div className={`truncate text-center font-bold leading-tight text-white ${large ? 'text-sm' : 'text-[9px]'}`}>
-          {char.name.split(' ')[0]}
-        </div>
-        <div className={`text-center ${large ? 'text-[11px]' : 'text-[8px]'} ${s.text}`}>
-          {RARITY_SYM[char.rarity]} {char.rarity}
+          <div className={`text-center text-[8px] ${s.text}`}>
+            {RARITY_SYM[char.rarity]} {char.rarity}
+          </div>
         </div>
       </div>
+    );
+  }
+
+  const item = result.item;
+  const s = RARITY_CARD[item.rarity];
+  return (
+    <div
+      className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} flex h-36 w-full flex-col items-center justify-center ${
+        revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-3 opacity-0'
+      }`}
+    >
+      <div className="text-2xl mb-1">{SLOT_EMOJI[item.slot]}</div>
+      <div className="truncate text-center text-[9px] font-bold text-white px-1">{item.name}</div>
+      <div className={`text-center text-[8px] ${s.text}`}>{RARITY_SYM[item.rarity]}</div>
+      <div className="mt-1 text-[8px] text-white/50">{STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}</div>
     </div>
   );
 }
