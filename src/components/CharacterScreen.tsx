@@ -196,7 +196,8 @@ export default function CharacterScreen({ onBack }: Props) {
                   prog={prog}
                   xpBarPct={xpBarPct}
                   canTrain={canTrain}
-                  onTrain={() => buyXp(char.id)}
+                  onTrain={(times) => buyXp(char.id, times)}
+                  coins={coins}
                 />
               )}
               {activeTab === 'enhance' && (
@@ -213,7 +214,7 @@ export default function CharacterScreen({ onBack }: Props) {
                   prog={prog}
                   xpBarPct={xpBarPct}
                   canTrain={canTrain}
-                  onTrain={() => buyXp(char.id)}
+                  onTrain={(times) => buyXp(char.id, times)}
                   coins={coins}
                 />
               )}
@@ -323,13 +324,14 @@ export default function CharacterScreen({ onBack }: Props) {
 
 // ── Tab sub-components ─────────────────────────────────────────────────────────
 
-function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
+function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain, coins }: {
   char: Character;
   scaled: Stats;
   prog: ProgData;
   xpBarPct: number;
   canTrain: boolean;
-  onTrain: () => void;
+  onTrain: (times: number) => void;
+  coins: number;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -387,13 +389,30 @@ function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
           <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${xpBarPct}%` }} />
         </div>
-        <button
-          disabled={!canTrain}
-          onClick={onTrain}
-          className="mt-3 w-full rounded-xl border border-blue-700/40 bg-blue-950/40 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          ◈ Train (+{TRAIN_XP} XP) — {TRAIN_COST.toLocaleString()} 🪙
-        </button>
+        <div className="mt-3 grid grid-cols-4 gap-1.5">
+          {[
+            { label: 'x1', times: 1 },
+            { label: 'x5', times: 5 },
+            { label: 'x10', times: 10 },
+            { label: 'MAX', times: Math.floor(coins / TRAIN_COST) },
+          ].map(({ label, times }) => {
+            const effective = Math.min(times, Math.floor(coins / TRAIN_COST));
+            return (
+              <button
+                key={label}
+                disabled={!canTrain || effective <= 0}
+                onClick={() => onTrain(effective)}
+                className={`rounded-lg border py-2 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  label === 'MAX'
+                    ? 'border-yellow-700/40 bg-yellow-950/40 text-yellow-300 hover:bg-yellow-900/50'
+                    : 'border-blue-700/40 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -476,9 +495,11 @@ function TrainTab({ data, prog, xpBarPct, canTrain, onTrain, coins }: {
   prog: ProgData;
   xpBarPct: number;
   canTrain: boolean;
-  onTrain: () => void;
+  onTrain: (times: number) => void;
   coins: number;
 }) {
+  const maxAffordable = Math.floor(coins / TRAIN_COST);
+
   return (
     <div className="flex flex-col gap-5">
       {/* Level status */}
@@ -510,31 +531,49 @@ function TrainTab({ data, prog, xpBarPct, canTrain, onTrain, coins }: {
         <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Training Session</div>
         <div className="mb-3 space-y-1.5 text-xs">
           <div className="flex justify-between">
-            <span className="text-slate-500">XP gained</span>
-            <span className="font-semibold text-blue-400">+{TRAIN_XP} XP</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Cost</span>
-            <span className="font-semibold text-yellow-400">{TRAIN_COST.toLocaleString()} 🪙</span>
+            <span className="text-slate-500">Per session</span>
+            <span className="font-semibold text-blue-400">+{TRAIN_XP} XP · {TRAIN_COST.toLocaleString()} 🪙</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Your balance</span>
             <span className={`font-semibold ${coins >= TRAIN_COST ? 'text-slate-300' : 'text-red-400'}`}>
-              {coins.toLocaleString()} 🪙
+              {coins.toLocaleString()} 🪙 ({maxAffordable} sessions)
             </span>
           </div>
         </div>
-        <button
-          disabled={!canTrain}
-          onClick={onTrain}
-          className="w-full rounded-xl border border-blue-700/40 bg-blue-950/40 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {data.level >= MAX_LEVEL
-            ? 'Max Level'
-            : !canTrain
-              ? `Need ${TRAIN_COST.toLocaleString()} 🪙`
-              : `Train (+${TRAIN_XP} XP)`}
-        </button>
+        {data.level >= MAX_LEVEL ? (
+          <div className="text-center text-sm font-bold text-yellow-400 py-2">Max Level Reached</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'x1', times: 1 },
+              { label: 'x5', times: 5 },
+              { label: 'x10', times: 10 },
+              { label: 'MAX', times: maxAffordable },
+            ].map(({ label, times }) => {
+              const effective = Math.min(times, maxAffordable);
+              const cost = TRAIN_COST * effective;
+              const disabled = !canTrain || effective <= 0;
+              return (
+                <button
+                  key={label}
+                  disabled={disabled}
+                  onClick={() => onTrain(effective)}
+                  className={`flex flex-col items-center rounded-xl border py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                    label === 'MAX'
+                      ? 'border-yellow-700/40 bg-yellow-950/40 text-yellow-300 hover:bg-yellow-900/50 col-span-2'
+                      : 'border-blue-700/40 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50'
+                  }`}
+                >
+                  <span>Train {label}</span>
+                  <span className="text-[10px] font-normal opacity-60">
+                    +{(TRAIN_XP * effective).toLocaleString()} XP · {cost.toLocaleString()} 🪙
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <p className="text-[10px] italic leading-relaxed text-slate-700">

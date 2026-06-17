@@ -50,7 +50,7 @@ interface GameState {
   addCoins: (amount: number) => void;
   addRubies: (amount: number) => void;
   gainXp: (ids: string[], amount: number) => void;
-  buyXp: (id: string) => void;
+  buyXp: (id: string, times?: number) => void;
   enhance: (id: string) => void;
   spendItem: (itemId: string) => void;
   moveToNode: (nodeId: string) => void;
@@ -187,13 +187,14 @@ export const useGameStore = create<GameState>()(
         });
       },
 
-      buyXp: (id) => {
+      buyXp: (id, times = 1) => {
         set((s) => {
-          if (s.coins < TRAIN_COST) return s;
+          const n = Math.min(times, Math.floor(s.coins / TRAIN_COST));
+          if (n <= 0) return s;
           const d = s.characterData[id] ?? { level: 1, xp: 0, enhancement: 0 };
-          const newXp = d.xp + TRAIN_XP;
+          const newXp = d.xp + TRAIN_XP * n;
           return {
-            coins: s.coins - TRAIN_COST,
+            coins: s.coins - TRAIN_COST * n,
             characterData: { ...s.characterData, [id]: { ...d, xp: newXp, level: levelFromXp(newXp) } },
           };
         });
