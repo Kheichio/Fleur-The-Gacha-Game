@@ -148,6 +148,7 @@ const REST_TEXTS = [
 const DANGER_LABEL: Record<string, string> = { safe: 'Safe', easy: 'Easy', medium: 'Moderate', hard: 'Dangerous' };
 const DANGER_COLOR: Record<string, string> = { safe: 'text-green-400', easy: 'text-yellow-300', medium: 'text-orange-400', hard: 'text-red-400' };
 const DANGER_DOT: Record<string, string> = { safe: 'bg-green-400', easy: 'bg-yellow-300', medium: 'bg-orange-400', hard: 'bg-red-400' };
+const NODE_GLOW: Record<string, string> = { safe: 'shadow-green-500/30', easy: 'shadow-yellow-500/30', medium: 'shadow-orange-500/30', hard: 'shadow-red-500/30' };
 
 interface Props {
   onBack: () => void;
@@ -167,7 +168,6 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
   const currentNode = MAP_NODES.find((n) => n.id === currentNodeId) ?? MAP_NODES[0];
   const reachableIds = new Set(currentNode.connections);
 
-  // First active party member portrait for avatar
   const avatarChar = activeTeamIds[0] ? CHARACTER_POOL.find((c) => c.id === activeTeamIds[0]) : null;
 
   function isStageAccessible(node: MapNode): boolean {
@@ -213,11 +213,16 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#070d1a] text-slate-100">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-800/60 bg-slate-950/80">
         <div className="flex items-center gap-3">
-          <button className="btn-secondary" onClick={onBack}>← Back</button>
+          <button
+            onClick={onBack}
+            className="rounded-full border border-white/15 bg-black/40 px-4 py-1.5 text-sm font-semibold text-slate-300 transition hover:bg-black/60"
+          >
+            ← Back
+          </button>
           <h2 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-xl font-bold text-amber-200">
             Travel
           </h2>
@@ -225,64 +230,68 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
         <CurrencyBar />
       </div>
 
-      <div className="flex flex-col gap-4 p-4">
-        {activeTeamIds.length < 3 && (
-          <div className="rounded-lg border border-yellow-700/40 bg-yellow-900/20 px-3 py-2 text-sm text-yellow-300">
-            ⚠ Set a full 3-character party before entering combat.
-          </div>
-        )}
-
-        {/* Location info */}
-        <div className="text-sm text-slate-400">
-          <span className="text-slate-500">Currently at: </span>
-          <span className="font-semibold text-amber-300">{currentNode.emoji} {currentNode.name}</span>
-          <span className="ml-2 text-xs text-slate-600">· Click adjacent nodes to move · Click current node to interact</span>
+      {activeTeamIds.length < 3 && (
+        <div className="flex-shrink-0 mx-5 mt-3 rounded-lg border border-yellow-700/40 bg-yellow-900/20 px-3 py-2 text-sm text-yellow-300">
+          Set a full 3-character party before entering combat.
         </div>
+      )}
 
-        {/* MAP */}
-        <div
-          className="relative w-full overflow-hidden rounded-2xl border border-amber-900/30"
-          style={{
-            height: '580px',
-            background: 'radial-gradient(ellipse at 25% 35%, #1e1306 0%, #110d03 55%, #080601 100%)',
-          }}
-        >
+      <div className="flex flex-1 overflow-hidden">
+        {/* Map area */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Map background */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at 30% 40%, #1e1306 0%, #110d03 50%, #080601 100%)',
+            }}
+          />
+
+          {/* Fog of war overlay */}
+          <div className="pointer-events-none absolute inset-0" style={{
+            background: `radial-gradient(circle at ${currentNode.x}% ${currentNode.y}%, transparent 15%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.75) 70%)`,
+          }} />
+
           {/* Dot-grid texture */}
           <div
-            className="absolute inset-0 opacity-[0.05]"
+            className="pointer-events-none absolute inset-0 opacity-[0.04]"
             style={{
               backgroundImage: 'radial-gradient(circle, #c8952a 1px, transparent 1px)',
-              backgroundSize: '32px 32px',
+              backgroundSize: '28px 28px',
             }}
           />
 
           {/* SVG paths */}
-          <svg
-            className="pointer-events-none absolute inset-0 h-full w-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            {CONNECTIONS.map(([a, b]) => (
-              <line
-                key={`${a.id}-${b.id}`}
-                x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="#6b4c1a" strokeWidth="0.5" strokeDasharray="1.3 1" opacity="0.8"
-              />
-            ))}
+          <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {CONNECTIONS.map(([a, b]) => {
+              const aReachable = a.id === currentNodeId || reachableIds.has(a.id);
+              const bReachable = b.id === currentNodeId || reachableIds.has(b.id);
+              const bright = aReachable && bReachable;
+              return (
+                <line
+                  key={`${a.id}-${b.id}`}
+                  x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                  stroke={bright ? '#a67c32' : '#3d2e12'}
+                  strokeWidth={bright ? '0.6' : '0.4'}
+                  strokeDasharray={bright ? '2 1' : '1.3 1.5'}
+                  opacity={bright ? 1 : 0.4}
+                />
+              );
+            })}
           </svg>
 
           {/* Player avatar on current node */}
           <div
             className="pointer-events-none absolute z-20 -translate-x-1/2"
-            style={{ left: `${currentNode.x}%`, top: `${Math.max(3, currentNode.y - 15)}%` }}
+            style={{ left: `${currentNode.x}%`, top: `${Math.max(3, currentNode.y - 12)}%` }}
           >
             <div className="flex flex-col items-center">
-              <div className="h-8 w-8 overflow-hidden rounded-full border-2 border-yellow-400 bg-slate-700 shadow-lg shadow-yellow-500/30 animate-bounce">
+              <div className="h-10 w-10 overflow-hidden rounded-full border-2 border-yellow-400 bg-slate-700 shadow-lg shadow-yellow-500/40 animate-bounce">
                 {avatarChar?.image ? (
                   <img src={avatarChar.image} alt="you" className="h-full w-full object-cover"
                     onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs font-black text-yellow-300">
+                  <div className="flex h-full w-full items-center justify-center text-sm font-black text-yellow-300">
                     {avatarChar ? avatarChar.name.charAt(0) : '⚔'}
                   </div>
                 )}
@@ -304,35 +313,35 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
                 key={node.id}
                 onClick={() => handleNodeClick(node)}
                 disabled={!clickable}
-                className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-150 ${
+                className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 transition-all duration-200 group ${
                   clickable ? 'cursor-pointer' : 'cursor-default'
                 }`}
                 style={{ left: `${node.x}%`, top: `${node.y}%` }}
               >
-                {/* Danger dot */}
-                <span className={`h-2 w-2 rounded-full ${DANGER_DOT[node.danger]} ${fullyLocked ? 'opacity-25' : ''}`} />
-                {/* Emoji */}
-                <div
-                  className={`text-3xl leading-none transition-transform duration-150 ${
-                    isCurrent
-                      ? 'scale-125 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]'
-                      : isReachable
-                      ? 'scale-110 opacity-90 hover:scale-125'
-                      : 'scale-90 opacity-30'
-                  } ${fullyLocked ? 'grayscale' : ''} ${isActive ? 'animate-pulse' : ''}`}
-                >
+                {/* Glow ring for current */}
+                {isCurrent && (
+                  <div className="absolute inset-0 -m-2 rounded-full bg-yellow-400/10 animate-ping" style={{ animationDuration: '2s' }} />
+                )}
+                {/* Node circle */}
+                <div className={`relative flex h-12 w-12 items-center justify-center rounded-full border-2 text-xl transition-all duration-200 ${
+                  isCurrent
+                    ? `border-yellow-400 bg-yellow-950/80 shadow-lg ${NODE_GLOW[node.danger]}`
+                    : isReachable
+                    ? `border-amber-600/60 bg-amber-950/60 group-hover:border-amber-400 group-hover:scale-110 shadow-md ${NODE_GLOW[node.danger]}`
+                    : 'border-slate-700/30 bg-slate-900/40'
+                } ${fullyLocked ? 'grayscale opacity-40' : ''} ${isActive ? 'scale-110' : ''}`}>
                   {node.emoji}
+                  {/* Danger dot */}
+                  <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-black ${DANGER_DOT[node.danger]} ${fullyLocked ? 'opacity-25' : ''}`} />
                 </div>
                 {/* Label */}
-                <div
-                  className={`whitespace-nowrap rounded border px-2 py-0.5 text-xs font-semibold leading-snug transition-all ${
-                    isCurrent
-                      ? 'border-yellow-500/60 bg-yellow-950/90 text-yellow-300'
-                      : isReachable
-                      ? 'border-slate-500/60 bg-slate-900/90 text-slate-200'
-                      : 'border-slate-800/40 bg-slate-950/70 text-slate-600'
-                  } ${fullyLocked ? 'opacity-40' : ''}`}
-                >
+                <div className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+                  isCurrent
+                    ? 'bg-yellow-950/90 text-yellow-300 border border-yellow-600/40'
+                    : isReachable
+                    ? 'bg-slate-900/90 text-slate-200 border border-slate-700/40 group-hover:text-amber-200'
+                    : 'bg-slate-950/60 text-slate-700 border border-slate-800/20'
+                } ${fullyLocked ? 'opacity-40' : ''}`}>
                   {node.name}
                 </div>
               </button>
@@ -340,112 +349,160 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
           })}
 
           {/* Legend */}
-          <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 bg-slate-950/60 rounded-lg p-2">
+          <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 rounded-xl bg-black/60 backdrop-blur-sm border border-slate-800/40 p-3">
             {(['safe', 'easy', 'medium', 'hard'] as const).map((d) => (
               <div key={d} className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${DANGER_DOT[d]}`} />
-                <span className="text-xs text-slate-500">{DANGER_LABEL[d]}</span>
+                <span className={`h-2.5 w-2.5 rounded-full ${DANGER_DOT[d]}`} />
+                <span className="text-[10px] text-slate-400">{DANGER_LABEL[d]}</span>
               </div>
             ))}
-            <div className="mt-1 border-t border-slate-800 pt-1 text-[10px] text-slate-600">
-              🌟 = current · bright = reachable
-            </div>
+          </div>
+
+          {/* Current location indicator */}
+          <div className="absolute top-3 left-3 rounded-xl bg-black/60 backdrop-blur-sm border border-slate-800/40 px-4 py-2">
+            <div className="text-[9px] uppercase tracking-wider text-slate-600">Location</div>
+            <div className="text-sm font-bold text-amber-300">{currentNode.emoji} {currentNode.name}</div>
           </div>
         </div>
 
-        {/* Event panel */}
-        {event && (
-          <div className="rounded-2xl border border-slate-700/60 bg-slate-800/95 p-5 shadow-xl">
-            <div className="mb-3 flex items-start justify-between">
-              <div>
-                <h3 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-amber-200">
-                  {event.node.emoji} {event.node.name}
-                </h3>
-                <span className={`text-xs font-semibold ${DANGER_COLOR[event.node.danger]}`}>
+        {/* Event panel — right sidebar */}
+        <div className="w-80 flex-shrink-0 border-l border-slate-800/60 bg-slate-950/60 flex flex-col">
+          {event ? (
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">{event.node.emoji}</span>
+                  <h3 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-amber-200">
+                    {event.node.name}
+                  </h3>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${DANGER_COLOR[event.node.danger]}`}>
+                  <span className={`h-2 w-2 rounded-full ${DANGER_DOT[event.node.danger]}`} />
                   {DANGER_LABEL[event.node.danger]} area
                 </span>
               </div>
+
+              <div className="h-px bg-slate-800/60 mb-4" />
+
+              {event.phase === 'approach' && (
+                <>
+                  <p style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="mb-5 text-sm italic leading-relaxed text-slate-400">
+                    "{event.node.desc}"
+                  </p>
+                  {event.node.locked && (
+                    <div className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-3 text-sm text-slate-500">🔒 Coming soon...</div>
+                  )}
+                  {event.node.type === 'stage' && !event.node.locked && (
+                    isStageAccessible(event.node) ? (
+                      <button
+                        className="w-full rounded-xl border border-red-700/50 bg-red-950/50 py-3 text-sm font-bold text-red-200 transition hover:bg-red-900/60"
+                        disabled={activeTeamIds.length < 3}
+                        onClick={() => onBattle(event.node.stageId!)}
+                      >
+                        ⚔️ Enter Battle
+                      </button>
+                    ) : (
+                      <div className="rounded-lg border border-red-900/30 bg-red-950/20 p-3 text-sm text-red-400">
+                        🔒 Defeat the previous area first.
+                      </div>
+                    )
+                  )}
+                  {(event.node.type === 'town' || event.node.type === 'city') && !event.node.locked && (
+                    <div className="rounded-lg border border-green-800/30 bg-green-950/20 p-3 text-sm text-green-400">
+                      🏠 A safe haven. Rest here freely.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {event.phase === 'battle-ready' && (
+                <>
+                  <p className="mb-2 text-sm text-slate-400">{event.node.desc}</p>
+                  <div className="mb-4 rounded-lg border border-red-800/40 bg-red-950/30 p-3 text-sm font-semibold text-red-300 animate-pulse">
+                    Enemies spotted ahead!
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      className="w-full rounded-xl border border-red-700/50 bg-red-950/50 py-3 text-sm font-bold text-red-200 transition hover:bg-red-900/60"
+                      disabled={activeTeamIds.length < 3}
+                      onClick={() => onBattle(event.encounterId)}
+                    >
+                      ⚔️ Engage!
+                    </button>
+                    <button
+                      className="w-full rounded-xl border border-slate-700/40 py-2 text-xs text-slate-500 transition hover:text-slate-300"
+                      onClick={() => setEvent(null)}
+                    >
+                      Retreat
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {event.phase === 'loot' && (
+                <>
+                  <p className="mb-4 text-sm text-slate-400">
+                    While exploring, you stumble upon something valuable...
+                  </p>
+                  <div className="mb-4 flex flex-col gap-2 rounded-xl border border-yellow-700/30 bg-yellow-950/20 p-4">
+                    {event.coins > 0 && (
+                      <div className="flex items-center gap-2 font-bold text-yellow-300">
+                        <span className="text-2xl">🪙</span>
+                        <span>+{event.coins} Coins</span>
+                      </div>
+                    )}
+                    {event.rubies > 0 && (
+                      <div className="flex items-center gap-2 font-bold text-red-300">
+                        <span className="text-2xl">💎</span>
+                        <span>+{event.rubies} Ruby</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="w-full rounded-xl border border-yellow-700/50 bg-yellow-950/50 py-3 text-sm font-bold text-yellow-200 transition hover:bg-yellow-900/60"
+                    onClick={claimLoot}
+                  >
+                    Collect!
+                  </button>
+                </>
+              )}
+
+              {event.phase === 'rest' && (
+                <>
+                  <p style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="mb-5 text-sm italic leading-relaxed text-slate-400">
+                    "{event.text}"
+                  </p>
+                  <button
+                    className="w-full rounded-xl border border-slate-700/40 py-2 text-sm text-slate-400 transition hover:text-white"
+                    onClick={() => setEvent(null)}
+                  >
+                    Continue
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-5">
+              <div className="text-center text-slate-700">
+                <div className="text-4xl mb-3">🗺️</div>
+                <div className="text-sm font-semibold">Select a Location</div>
+                <div className="mt-1 text-xs text-slate-800">Click your current node or an adjacent one</div>
+              </div>
+            </div>
+          )}
+
+          {/* Close event */}
+          {event && (
+            <div className="flex-shrink-0 border-t border-slate-800/60 p-3">
               <button
-                className="text-slate-500 hover:text-white transition text-xl leading-none"
                 onClick={() => setEvent(null)}
+                className="w-full rounded-xl border border-slate-800 py-2 text-xs font-semibold text-slate-600 transition hover:text-slate-400"
               >
-                ✕
+                Close
               </button>
             </div>
-
-            {event.phase === 'approach' && (
-              <>
-                <p className="mb-4 text-sm leading-relaxed text-slate-300">{event.node.desc}</p>
-                {event.node.locked && (
-                  <div className="text-sm italic text-slate-500">🔒 Coming soon...</div>
-                )}
-                {event.node.type === 'stage' && !event.node.locked && (
-                  isStageAccessible(event.node) ? (
-                    <button
-                      className="btn"
-                      disabled={activeTeamIds.length < 3}
-                      onClick={() => onBattle(event.node.stageId!)}
-                    >
-                      ⚔️ Enter Battle
-                    </button>
-                  ) : (
-                    <div className="text-sm text-red-400">🔒 Defeat the previous area first to unlock this location.</div>
-                  )
-                )}
-                {(event.node.type === 'town' || event.node.type === 'city') && !event.node.locked && (
-                  <div className="text-sm text-green-400">🏠 A safe haven. You may rest here freely.</div>
-                )}
-              </>
-            )}
-
-            {event.phase === 'battle-ready' && (
-              <>
-                <p className="mb-1 text-sm text-slate-300">{event.node.desc}</p>
-                <p className="mb-4 text-sm font-semibold text-red-300">⚠ Enemies spotted! Engage or retreat?</p>
-                <div className="flex gap-3">
-                  <button
-                    className="btn"
-                    disabled={activeTeamIds.length < 3}
-                    onClick={() => onBattle(event.encounterId)}
-                  >
-                    ⚔️ Engage!
-                  </button>
-                  <button className="btn-secondary" onClick={() => setEvent(null)}>Retreat</button>
-                </div>
-              </>
-            )}
-
-            {event.phase === 'loot' && (
-              <>
-                <p className="mb-4 text-sm text-slate-300">
-                  While exploring, you stumble upon something valuable left behind...
-                </p>
-                <div className="mb-4 flex gap-5">
-                  {event.coins > 0 && (
-                    <div className="flex items-center gap-2 font-bold text-yellow-300">
-                      <span className="text-2xl">🪙</span>
-                      <span>+{event.coins} Coins</span>
-                    </div>
-                  )}
-                  {event.rubies > 0 && (
-                    <div className="flex items-center gap-2 font-bold text-red-300">
-                      <span className="text-2xl">💎</span>
-                      <span>+{event.rubies} Ruby</span>
-                    </div>
-                  )}
-                </div>
-                <button className="btn" onClick={claimLoot}>Collect!</button>
-              </>
-            )}
-
-            {event.phase === 'rest' && (
-              <>
-                <p className="mb-4 text-sm italic leading-relaxed text-slate-300">"{event.text}"</p>
-                <button className="btn-secondary" onClick={() => setEvent(null)}>Continue</button>
-              </>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

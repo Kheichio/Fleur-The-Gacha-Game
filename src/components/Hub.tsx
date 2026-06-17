@@ -126,6 +126,11 @@ export default function Hub({ onNavigate }: Props) {
         </button>
       </div>
 
+      {/* Version */}
+      <div className="absolute bottom-3 right-4 z-10 text-[10px] font-mono text-slate-700/50">
+        Alpha Version 0.1.2a
+      </div>
+
       {/* Secret dev buttons — barely visible, hover to reveal */}
       <div className="absolute bottom-3 left-3 flex gap-1.5 opacity-[0.12] hover:opacity-50 transition-opacity duration-300 z-20">
         <button

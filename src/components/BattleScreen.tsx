@@ -16,6 +16,7 @@ interface Props {
 
 type Status = 'ongoing' | 'won' | 'lost';
 type ActionPhase = 'idle' | 'choose' | 'pick-enemy' | 'pick-item' | 'pick-ally';
+type PendingAction = 'phys-attack' | 'magic-attack' | 'skill' | null;
 
 export default function BattleScreen({ stageId, onExit }: Props) {
   const activeTeamIds = useGameStore((s) => s.activeTeamIds);
@@ -48,17 +49,23 @@ export default function BattleScreen({ stageId, onExit }: Props) {
   const [status, setStatus] = useState<Status>('ongoing');
   const [rewardClaimed, setRewardClaimed] = useState(false);
   const [actionPhase, setActionPhase] = useState<ActionPhase>('idle');
-  const [pendingAction, setPendingAction] = useState<'attack' | 'skill' | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [pendingItem, setPendingItem] = useState<string | null>(null);
   const [hitFlash, setHitFlash] = useState<{ uid: string; type: 'phys' | 'magic' | 'heal' } | null>(null);
+  const [damagePopup, setDamagePopup] = useState<{ uid: string; amount: number; isCrit: boolean } | null>(null);
 
   function appendLog(text: string) {
-    setLog((l) => [...l.slice(-20), text]);
+    setLog((l) => [...l.slice(-30), text]);
   }
 
   function flashUnit(uid: string, type: 'phys' | 'magic' | 'heal') {
     setHitFlash({ uid, type });
     setTimeout(() => setHitFlash((prev) => (prev?.uid === uid ? null : prev)), 360);
+  }
+
+  function showDamage(uid: string, amount: number, isCrit: boolean) {
+    setDamagePopup({ uid, amount, isCrit });
+    setTimeout(() => setDamagePopup((prev) => (prev?.uid === uid ? null : prev)), 900);
   }
 
   function startNewRound(currentUnits: BattleUnit[]) {
@@ -70,6 +77,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
     setOrder(buildTurnOrder(decremented.filter((u) => u.alive)));
     setTurnIndex(0);
     setRound((r) => r + 1);
+    appendLog(`— Round ${round + 1} —`);
   }
 
   function advanceTurn(updatedUnits: BattleUnit[]) {
@@ -96,20 +104,41 @@ export default function BattleScreen({ stageId, onExit }: Props) {
     return 'ongoing';
   }
 
-  function executeAction(actor: BattleUnit, target: BattleUnit, type: 'attack' | 'skill') {
+  function executeAction(actor: BattleUnit, target: BattleUnit, type: PendingAction) {
     const useSkill = type === 'skill' && actor.skillCooldownRemaining === 0;
     const skillType = actor.character.skill.type ?? 'melee';
-    const multiplier = useSkill ? actor.character.skill.multiplier : 1;
-    const attackType = useSkill ? skillType : 'melee';
-    const damage = calcDamage(actor, target, multiplier, attackType);
+    let multiplier = 1;
+    let attackType: 'melee' | 'magic' = 'melee';
+    let actionLabel = '';
 
-    if (useSkill && skillType === 'magic') {
+    if (useSkill) {
+      multiplier = actor.character.skill.multiplier;
+      attackType = skillType;
+      actionLabel = `uses ${actor.character.skill.name} on`;
+    } else if (type === 'magic-attack') {
+      attackType = 'magic';
+      multiplier = 1;
+      actionLabel = 'casts magic at';
+    } else {
+      attackType = 'melee';
+      multiplier = 1;
+      actionLabel = 'strikes';
+    }
+
+    const damage = calcDamage(actor, target, multiplier, attackType);
+    const isCrit = damage > Math.max(1, Math.round(
+      (attackType === 'magic' ? actor.character.stats.magAtk : actor.character.stats.physAtk) * multiplier
+      - (attackType === 'magic' ? target.character.stats.magDef : target.character.stats.physDef) * 0.5
+    ));
+
+    if (attackType === 'magic') {
       playMagicHit();
       flashUnit(target.uid, 'magic');
     } else {
       playMeleeHit();
       flashUnit(target.uid, 'phys');
     }
+    showDamage(target.uid, damage, isCrit);
 
     let updated = applyDamage(units, target.uid, damage);
     if (useSkill) {
@@ -120,7 +149,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
 
     const defeated = damage >= target.currentHp;
     appendLog(
-      `${actor.character.name} ${useSkill ? `uses ${actor.character.skill.name} on` : 'attacks'} ${target.character.name} for ${damage}${defeated ? ' — defeated!' : '.'}`
+      `${actor.character.name} ${actionLabel} ${target.character.name} for ${damage}${isCrit ? ' CRIT!' : ''}${defeated ? ' — defeated!' : '.'}`
     );
 
     const outcome = checkOutcome(updated);
@@ -154,6 +183,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
     );
     playHeal();
     flashUnit(ally.uid, 'heal');
+    showDamage(ally.uid, -healed, false);
     spendItem(pendingItem);
     appendLog(`${actor.character.name} uses ${def.emoji} ${def.name} on ${ally.character.name} (+${healed} HP).`);
     setUnits(updated);
@@ -162,7 +192,6 @@ export default function BattleScreen({ stageId, onExit }: Props) {
     advanceTurn(updated);
   }
 
-  // Enemy auto-turn and dead-unit skip
   useEffect(() => {
     if (status !== 'ongoing') return;
     const currentOrderUnit = order[turnIndex];
@@ -181,13 +210,17 @@ export default function BattleScreen({ stageId, onExit }: Props) {
         const target = pickTarget(targets);
         if (!target) return;
         const useSkill = live.skillCooldownRemaining === 0;
-        executeAction(live, target, useSkill ? 'skill' : 'attack');
+        if (useSkill) {
+          executeAction(live, target, 'skill');
+        } else {
+          const useMagic = live.character.stats.magAtk > live.character.stats.physAtk;
+          executeAction(live, target, useMagic ? 'magic-attack' : 'phys-attack');
+        }
       }, 700);
       return () => clearTimeout(timeout);
     }
   }, [turnIndex, round, status]);
 
-  // Reward / XP on victory + record stats
   useEffect(() => {
     if ((status === 'won' || status === 'lost') && !rewardClaimed) {
       const monstersKilled = units.filter((u) => !u.isPlayer && !u.alive).length;
@@ -202,38 +235,50 @@ export default function BattleScreen({ stageId, onExit }: Props) {
   }, [status, rewardClaimed]);
 
   const currentActor = order[turnIndex] ? units.find((u) => u.uid === order[turnIndex].uid) : null;
-  const isPlayerTurn = Boolean(status === 'ongoing' && currentActor?.isPlayer && currentActor?.alive);
   const hasItems = Object.values(items).some((c) => c > 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+    <div className="flex h-screen flex-col bg-[#070d1a] text-slate-100 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <div>
-          <span className="font-bold text-amber-200">{stage.name}</span>
-          <span className="ml-2 text-sm text-slate-500">· Round {round}</span>
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-800/60 bg-slate-950/80">
+        <div className="flex items-center gap-3">
+          <span style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-amber-200">
+            {stage.name}
+          </span>
+          <span className="rounded-full bg-slate-800/60 px-2.5 py-0.5 text-xs font-semibold text-slate-400">Round {round}</span>
         </div>
         <button
           onClick={() => setStatus('lost')}
-          className="rounded-lg border border-red-800/50 bg-red-950/50 px-3 py-1 text-sm text-red-400 transition hover:bg-red-900/60"
+          className="rounded-lg border border-red-800/50 bg-red-950/50 px-4 py-1.5 text-sm font-semibold text-red-400 transition hover:bg-red-900/60"
         >
-          🏳 Forfeit
+          Forfeit
         </button>
       </div>
 
-      {/* Arena */}
+      {/* Arena — fullscreen feel */}
       <div
-        className="relative flex items-end justify-center gap-8 px-4 py-8"
+        className="relative flex-1 flex items-center justify-center gap-12 px-8 overflow-hidden"
         style={{
-          background: 'linear-gradient(to bottom, #1a3a5c 0%, #1a3a5c 28%, #4a8c30 28%, #3d7826 60%, #2d5c1a 100%)',
-          minHeight: '300px',
+          background: 'linear-gradient(180deg, #0f2840 0%, #1a3a5c 20%, #1a3a5c 35%, #3a7a28 35%, #2d6420 55%, #1e4a14 75%, #142e0e 100%)',
         }}
       >
-        {/* Ground line decoration */}
-        <div className="absolute left-0 right-0 border-b border-black/20" style={{ bottom: '38%' }} />
+        {/* Atmospheric elements */}
+        <div className="pointer-events-none absolute inset-0" style={{
+          background: 'radial-gradient(ellipse at 50% 20%, rgba(100,180,255,0.06) 0%, transparent 60%)',
+        }} />
+        <div className="pointer-events-none absolute bottom-0 inset-x-0 h-1/3" style={{
+          background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
+        }} />
+
+        {/* Ground texture */}
+        <div className="pointer-events-none absolute inset-x-0 opacity-[0.04]" style={{
+          top: '35%', bottom: 0,
+          backgroundImage: 'radial-gradient(circle, #4a8c30 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }} />
 
         {/* Player team */}
-        <div className="flex items-end gap-4 z-10">
+        <div className="flex items-end gap-5 z-10">
           {units.filter((u) => u.isPlayer).map((unit) => (
             <UnitSprite
               key={unit.uid}
@@ -242,15 +287,20 @@ export default function BattleScreen({ stageId, onExit }: Props) {
               glow={actionPhase === 'pick-ally' && unit.isPlayer && unit.alive ? 'green' : null}
               isCurrentActor={currentActor?.uid === unit.uid && status === 'ongoing'}
               onClick={() => handleAllyClick(unit)}
+              damagePopup={damagePopup?.uid === unit.uid ? damagePopup : null}
             />
           ))}
         </div>
 
-        {/* VS */}
-        <div className="text-white/15 text-3xl font-black select-none z-10 mb-8">VS</div>
+        {/* VS divider */}
+        <div className="z-10 flex flex-col items-center gap-1 mb-6">
+          <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+          <div className="text-white/10 text-2xl font-black select-none">VS</div>
+          <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+        </div>
 
         {/* Enemy team */}
-        <div className="flex items-end gap-4 z-10">
+        <div className="flex items-end gap-5 z-10">
           {units.filter((u) => !u.isPlayer).map((unit) => (
             <UnitSprite
               key={unit.uid}
@@ -259,42 +309,64 @@ export default function BattleScreen({ stageId, onExit }: Props) {
               glow={actionPhase === 'pick-enemy' && !unit.isPlayer && unit.alive ? 'red' : null}
               isCurrentActor={currentActor?.uid === unit.uid && status === 'ongoing'}
               onClick={() => handleEnemyClick(unit)}
+              damagePopup={damagePopup?.uid === unit.uid ? damagePopup : null}
             />
           ))}
         </div>
 
-        {/* Current turn label */}
+        {/* Turn label */}
         {status === 'ongoing' && currentActor && (
-          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-white/60 bg-black/40 px-2 py-0.5 rounded-full">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1 text-xs text-white/60 backdrop-blur-sm">
             {currentActor.alive ? `${currentActor.character.name.split(' ')[0]}'s turn` : 'Resolving…'}
           </div>
         )}
       </div>
 
-      {/* Action area */}
-      <div className="flex flex-col gap-3 px-4 py-3">
+      {/* Action bar */}
+      <div className="flex-shrink-0 border-t border-slate-800/60 bg-slate-950/90 px-5 py-3">
         {status === 'ongoing' && actionPhase === 'choose' && currentActor && (
           <div className="flex flex-wrap gap-2 justify-center">
             <button
-              className="rounded-xl border border-red-700/60 bg-red-950/60 px-4 py-2 text-sm font-bold text-red-200 transition hover:bg-red-900/70"
-              onClick={() => { setPendingAction('attack'); setActionPhase('pick-enemy'); }}
+              className="flex items-center gap-2 rounded-xl border border-red-700/60 bg-red-950/60 px-5 py-2.5 text-sm font-bold text-red-200 transition hover:bg-red-900/70"
+              onClick={() => { setPendingAction('phys-attack'); setActionPhase('pick-enemy'); }}
             >
-              ⚔️ Attack
+              <span className="text-lg">⚔️</span>
+              <div className="text-left">
+                <div>Strike</div>
+                <div className="text-[10px] font-normal text-red-400/60">Physical · {currentActor.character.stats.physAtk} ATK</div>
+              </div>
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-blue-700/60 bg-blue-950/60 px-5 py-2.5 text-sm font-bold text-blue-200 transition hover:bg-blue-900/70"
+              onClick={() => { setPendingAction('magic-attack'); setActionPhase('pick-enemy'); }}
+            >
+              <span className="text-lg">🔮</span>
+              <div className="text-left">
+                <div>Magic</div>
+                <div className="text-[10px] font-normal text-blue-400/60">Magical · {currentActor.character.stats.magAtk} ATK</div>
+              </div>
             </button>
             <button
               disabled={currentActor.skillCooldownRemaining > 0}
-              className="rounded-xl border border-purple-700/60 bg-purple-950/60 px-4 py-2 text-sm font-bold text-purple-200 transition hover:bg-purple-900/70 disabled:opacity-40"
+              className="flex items-center gap-2 rounded-xl border border-purple-700/60 bg-purple-950/60 px-5 py-2.5 text-sm font-bold text-purple-200 transition hover:bg-purple-900/70 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => { setPendingAction('skill'); setActionPhase('pick-enemy'); }}
             >
-              ✨ {currentActor.character.skill.name}
-              {currentActor.skillCooldownRemaining > 0 ? ` (${currentActor.skillCooldownRemaining})` : ''}
+              <span className="text-lg">✨</span>
+              <div className="text-left">
+                <div>{currentActor.character.skill.name}</div>
+                <div className="text-[10px] font-normal text-purple-400/60">
+                  {currentActor.character.skill.type === 'magic' ? 'Magic' : 'Physical'} · {currentActor.character.skill.multiplier}x
+                  {currentActor.skillCooldownRemaining > 0 ? ` · ${currentActor.skillCooldownRemaining} turns` : ''}
+                </div>
+              </div>
             </button>
             {hasItems && (
               <button
-                className="rounded-xl border border-green-700/60 bg-green-950/60 px-4 py-2 text-sm font-bold text-green-200 transition hover:bg-green-900/70"
+                className="flex items-center gap-2 rounded-xl border border-green-700/60 bg-green-950/60 px-5 py-2.5 text-sm font-bold text-green-200 transition hover:bg-green-900/70"
                 onClick={() => setActionPhase('pick-item')}
               >
-                🧪 Item
+                <span className="text-lg">🧪</span>
+                <div>Item</div>
               </button>
             )}
           </div>
@@ -302,15 +374,15 @@ export default function BattleScreen({ stageId, onExit }: Props) {
 
         {status === 'ongoing' && actionPhase === 'pick-enemy' && (
           <div className="flex items-center justify-center gap-4">
-            <span className="text-sm text-red-300 animate-pulse">← Select a target →</span>
-            <button className="btn-secondary text-xs" onClick={() => { setActionPhase('choose'); setPendingAction(null); }}>Cancel</button>
+            <span className="text-sm text-red-300 animate-pulse">Select a target</span>
+            <button className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:text-white" onClick={() => { setActionPhase('choose'); setPendingAction(null); }}>Cancel</button>
           </div>
         )}
 
         {status === 'ongoing' && actionPhase === 'pick-ally' && (
           <div className="flex items-center justify-center gap-4">
-            <span className="text-sm text-green-300 animate-pulse">← Select an ally →</span>
-            <button className="btn-secondary text-xs" onClick={() => { setActionPhase('choose'); setPendingItem(null); }}>Cancel</button>
+            <span className="text-sm text-green-300 animate-pulse">Select an ally</span>
+            <button className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:text-white" onClick={() => { setActionPhase('choose'); setPendingItem(null); }}>Cancel</button>
           </div>
         )}
 
@@ -331,41 +403,45 @@ export default function BattleScreen({ stageId, onExit }: Props) {
                     <span>{def.emoji}</span>
                     <span className="font-semibold">{def.name}</span>
                     <span className="ml-auto text-xs text-slate-400">{def.desc}</span>
-                    <span className="text-xs text-slate-500">×{count}</span>
+                    <span className="text-xs text-slate-500">x{count}</span>
                   </button>
                 );
               })}
-            <button className="btn-secondary text-xs self-start" onClick={() => setActionPhase('choose')}>Cancel</button>
+            <button className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400 self-start hover:text-white" onClick={() => setActionPhase('choose')}>Cancel</button>
           </div>
         )}
 
         {status === 'won' && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <div className="text-2xl font-black text-green-400">Victory!</div>
-            <div className="text-yellow-300">🪙 +{stage.goldReward} coins · ✨ +{Math.floor(stage.goldReward / 2)} XP</div>
+          <div className="flex flex-col items-center gap-3 py-3">
+            <div style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }} className="text-3xl font-black text-green-400">Victory!</div>
+            <div className="flex gap-4 text-sm">
+              <span className="font-bold text-yellow-300">🪙 +{stage.goldReward}</span>
+              <span className="font-bold text-blue-300">✨ +{Math.floor(stage.goldReward / 2)} XP</span>
+            </div>
             <button className="btn" onClick={onExit}>Continue</button>
           </div>
         )}
         {status === 'lost' && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <div className="text-2xl font-black text-red-400">Defeated</div>
+          <div className="flex flex-col items-center gap-3 py-3">
+            <div style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }} className="text-3xl font-black text-red-400">Defeated</div>
             <button className="btn" onClick={onExit}>Retreat</button>
           </div>
         )}
+
+        {status === 'ongoing' && actionPhase === 'idle' && (
+          <div className="text-center text-xs text-slate-700">Waiting...</div>
+        )}
       </div>
 
-      {/* Battle log */}
-      <div className="mx-4 mb-4 flex-1 overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Battle Log</div>
-        {log.map((entry, i) => (
-          <div key={i} className="text-xs text-slate-400 leading-relaxed">{entry}</div>
+      {/* Battle log — collapsible at bottom */}
+      <div className="flex-shrink-0 max-h-28 overflow-y-auto border-t border-slate-800/40 bg-slate-950/60 px-5 py-2">
+        {log.slice(-8).map((entry, i) => (
+          <div key={i} className={`text-xs leading-relaxed ${i === log.slice(-8).length - 1 ? 'text-slate-300' : 'text-slate-600'}`}>{entry}</div>
         ))}
       </div>
     </div>
   );
 }
-
-// ─── Unit sprite in the arena ───────────────────────────────────────────────
 
 function UnitSprite({
   unit,
@@ -373,40 +449,54 @@ function UnitSprite({
   glow,
   isCurrentActor,
   onClick,
+  damagePopup,
 }: {
   unit: BattleUnit;
   flashType: 'phys' | 'magic' | 'heal' | null;
   glow: 'red' | 'green' | null;
   isCurrentActor: boolean;
   onClick: () => void;
+  damagePopup: { amount: number; isCrit: boolean } | null;
 }) {
   const hpPct = Math.max(0, (unit.currentHp / unit.maxHp) * 100);
 
   let ringClass = '';
-  if (flashType === 'phys') ringClass = 'ring-4 ring-red-500';
-  else if (flashType === 'magic') ringClass = 'ring-4 ring-purple-500';
-  else if (flashType === 'heal') ringClass = 'ring-4 ring-green-400';
+  if (flashType === 'phys') ringClass = 'ring-4 ring-red-500/80';
+  else if (flashType === 'magic') ringClass = 'ring-4 ring-purple-500/80';
+  else if (flashType === 'heal') ringClass = 'ring-4 ring-green-400/80';
   else if (glow === 'red') ringClass = 'ring-2 ring-red-400 animate-pulse cursor-crosshair';
   else if (glow === 'green') ringClass = 'ring-2 ring-green-400 animate-pulse cursor-pointer';
-  else if (isCurrentActor && unit.isPlayer && unit.alive) ringClass = 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-500/50';
+  else if (isCurrentActor && unit.alive) ringClass = 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-500/40';
 
   const shouldBounce = isCurrentActor && unit.isPlayer && unit.alive && !flashType;
 
   return (
     <div
       onClick={glow ? onClick : undefined}
-      className={`flex flex-col items-center gap-1 ${!unit.alive ? 'opacity-30 grayscale' : ''} transition-all duration-150`}
+      className={`relative flex flex-col items-center gap-1.5 ${!unit.alive ? 'opacity-25 grayscale' : ''} transition-all duration-150`}
     >
-      {/* Turn indicator */}
-      {isCurrentActor && unit.isPlayer && unit.alive && (
-        <div className="text-yellow-400 text-xs leading-none mb-0.5 animate-pulse">▼</div>
+      {/* Damage popup */}
+      {damagePopup && (
+        <div className={`absolute -top-8 left-1/2 -translate-x-1/2 z-20 font-black text-lg animate-bounce ${
+          damagePopup.amount < 0 ? 'text-green-400' : damagePopup.isCrit ? 'text-yellow-300' : 'text-red-400'
+        }`} style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+          {damagePopup.amount < 0 ? `+${Math.abs(damagePopup.amount)}` : `-${damagePopup.amount}`}
+          {damagePopup.isCrit && <span className="text-xs ml-0.5">CRIT</span>}
+        </div>
       )}
-      {(!isCurrentActor || !unit.isPlayer || !unit.alive) && (
+
+      {/* Turn indicator */}
+      {isCurrentActor && unit.alive && (
+        <div className={`text-xs leading-none mb-0.5 animate-pulse ${unit.isPlayer ? 'text-yellow-400' : 'text-red-400'}`}>▼</div>
+      )}
+      {(!isCurrentActor || !unit.alive) && (
         <div className="text-transparent text-xs leading-none mb-0.5">▼</div>
       )}
 
-      {/* Portrait */}
-      <div className={`relative h-20 w-20 overflow-hidden rounded-full border-2 transition-all duration-150 ${unit.alive ? 'border-slate-500' : 'border-slate-800'} ${ringClass} ${shouldBounce ? 'animate-bounce' : ''}`}>
+      {/* Portrait — larger */}
+      <div className={`relative h-24 w-24 overflow-hidden rounded-2xl border-2 transition-all duration-150 ${
+        unit.alive ? (unit.isPlayer ? 'border-blue-500/50' : 'border-red-500/50') : 'border-slate-800'
+      } ${ringClass} ${shouldBounce ? 'animate-bounce' : ''}`}>
         {unit.character.image ? (
           <img
             src={unit.character.image}
@@ -415,7 +505,7 @@ function UnitSprite({
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-slate-700 text-3xl font-black text-slate-300">
+          <div className={`flex h-full w-full items-center justify-center text-3xl font-black ${unit.isPlayer ? 'bg-blue-900/40 text-blue-300' : 'bg-red-900/40 text-red-300'}`}>
             {unit.character.name.charAt(0)}
           </div>
         )}
@@ -425,18 +515,20 @@ function UnitSprite({
       </div>
 
       {/* Name */}
-      <div className={`max-w-[80px] truncate text-center text-[10px] font-semibold ${isCurrentActor && unit.isPlayer ? 'text-yellow-300' : 'text-white'}`}>
+      <div className={`max-w-[96px] truncate text-center text-[11px] font-bold ${
+        isCurrentActor && unit.alive ? (unit.isPlayer ? 'text-yellow-300' : 'text-red-300') : 'text-white/80'
+      }`}>
         {unit.character.name.split(' ')[0]}
       </div>
 
       {/* HP bar */}
-      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-black/50">
+      <div className="h-2 w-24 overflow-hidden rounded-full bg-black/60 border border-black/30">
         <div
           className={`h-full rounded-full transition-all duration-300 ${hpPct > 50 ? 'bg-green-400' : hpPct > 25 ? 'bg-yellow-400' : 'bg-red-500'}`}
           style={{ width: `${hpPct}%` }}
         />
       </div>
-      <div className="text-[8px] text-white/60">{unit.currentHp}/{unit.maxHp}</div>
+      <div className="text-[9px] text-white/50 font-mono">{unit.currentHp}/{unit.maxHp}</div>
     </div>
   );
 }
