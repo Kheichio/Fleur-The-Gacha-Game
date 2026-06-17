@@ -24,6 +24,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
   const gainXp = useGameStore((s) => s.gainXp);
   const items = useGameStore((s) => s.items);
   const spendItem = useGameStore((s) => s.spendItem);
+  const recordDefeats = useGameStore((s) => s.recordDefeats);
 
   const stage = useMemo(() => [...STAGES, ...ENCOUNTERS].find((s) => s.id === stageId)!, [stageId]);
 
@@ -186,11 +187,16 @@ export default function BattleScreen({ stageId, onExit }: Props) {
     }
   }, [turnIndex, round, status]);
 
-  // Reward / XP on victory
+  // Reward / XP on victory + record stats
   useEffect(() => {
-    if (status === 'won' && !rewardClaimed) {
-      completeStage(stage.id, true, stage.goldReward);
-      gainXp(activeTeamIds, Math.floor(stage.goldReward / 2));
+    if ((status === 'won' || status === 'lost') && !rewardClaimed) {
+      const monstersKilled = units.filter((u) => !u.isPlayer && !u.alive).length;
+      const alliesLost = units.filter((u) => u.isPlayer && !u.alive).length;
+      recordDefeats(monstersKilled, alliesLost);
+      if (status === 'won') {
+        completeStage(stage.id, true, stage.goldReward);
+        gainXp(activeTeamIds, Math.floor(stage.goldReward / 2));
+      }
       setRewardClaimed(true);
     }
   }, [status, rewardClaimed]);

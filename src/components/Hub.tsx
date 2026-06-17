@@ -1,6 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 
-type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage';
+type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage' | 'account';
 
 
 interface Props {
@@ -20,6 +20,15 @@ export default function Hub({ onNavigate }: Props) {
         background: 'linear-gradient(160deg, #0a0a1a 0%, #0d1117 30%, #12081f 60%, #0a0e1a 100%)',
       }}
     >
+      {/* Account — top left */}
+      <button
+        onClick={() => onNavigate('account')}
+        className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-slate-700/50 bg-slate-900/90 px-3.5 py-1.5 shadow-lg transition hover:border-slate-600 hover:bg-slate-800/90"
+      >
+        <span className="text-base">👤</span>
+        <span className="text-sm font-semibold text-slate-300">Account</span>
+      </button>
+
       {/* Currency — top right */}
       <div className="absolute right-4 top-4 flex flex-col items-end gap-1.5 z-10">
         <div className="flex items-center gap-2 rounded-full border border-yellow-600/40 bg-slate-900/90 px-3.5 py-1.5 shadow-lg">

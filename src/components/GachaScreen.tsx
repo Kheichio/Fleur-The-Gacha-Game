@@ -59,7 +59,7 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyIcon: '💎',
     currencyLabel: 'Rubies',
     costPer: ADVENTURE_PULL_COST,
-    ratesText: 'Common 50%  ·  Rare 35%  ·  Epic 13.5%  ·  Legendary 1.5%',
+    ratesText: 'Common 51%  ·  Rare 35%  ·  Epic 13.5%  ·  Legendary 0.5%',
     featuredIds: ['fleur-theos', 'auxentios-brigach', 'roza-defteros', 'casilda'],
     decorSymbol: '◆',
   },
@@ -76,7 +76,7 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyIcon: '💎',
     currencyLabel: 'Rubies',
     costPer: DEMON_PULL_COST,
-    ratesText: 'Common 45%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 2%',
+    ratesText: 'Common 46.5%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 0.5%',
     featuredIds: ['tomoe-yoshimi'],
     decorSymbol: '⚔',
   },
@@ -93,7 +93,7 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyIcon: '💎',
     currencyLabel: 'Rubies',
     costPer: BEYOND_PULL_COST,
-    ratesText: 'Common 45%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 2%',
+    ratesText: 'Common 46.5%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 0.5%',
     featuredIds: ['anwaltin-von-berater'],
     decorSymbol: '◉',
   },
@@ -177,12 +177,11 @@ export default function GachaScreen({ onBack }: Props) {
         <CurrencyBar />
       </div>
 
-      {/* Slider — with horizontal margin */}
+      {/* Slider — with horizontal margin, fills available space */}
       <div
-        className="relative flex-1 overflow-hidden mx-6 mt-4 rounded-2xl"
+        className="relative flex-1 overflow-hidden mx-6 my-2 rounded-2xl"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        style={{ minHeight: '400px' }}
       >
         {/* Track */}
         <div
@@ -226,7 +225,7 @@ export default function GachaScreen({ onBack }: Props) {
       </div>
 
       {/* Pull controls */}
-      <div className="flex-shrink-0 border-t border-slate-800/70 bg-slate-950/80 px-4 py-4 mt-2">
+      <div className="flex-shrink-0 border-t border-slate-800/70 bg-slate-950/80 px-4 py-4">
         <div className="mb-1 text-center text-[11px] text-slate-600">{banner.ratesText}</div>
         <div className="mb-3 text-center text-[10px] text-slate-700">
           Pity: {pity}/{PITY_THRESHOLD} · Guaranteed {RARITY_SYM.Legendary} at {PITY_THRESHOLD}
@@ -288,7 +287,7 @@ function BannerPanel({ banner, pity }: { banner: BannerConfig; pity: number }) {
 
   return (
     <div
-      className="relative flex flex-col items-center justify-end overflow-hidden px-6 pb-14 pt-6"
+      className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6"
       style={{ width: `${100 / BANNER_CONFIGS.length}%`, background: banner.bgGradient }}
     >
       {/* Radial glow */}
@@ -398,13 +397,13 @@ function PullOverlay({
       {/* Epic+ background particles */}
       {hasEpicPlus && <EpicParticles />}
 
-      <div className="relative z-10 w-full max-w-2xl px-4">
+      <div className="relative z-10 w-full max-w-7xl px-4 overflow-y-auto max-h-[90vh]">
         {isSingle ? (
           <div className="mb-8 flex justify-center">
             {results.length > 0 && <ResultCardLarge result={results[0]} revealed={revealedCount >= 1} />}
           </div>
         ) : (
-          <div className="mb-6 grid grid-cols-5 gap-3">
+          <div className="mb-6 grid grid-cols-5 gap-4">
             {results.map((result, i) => (
               <ResultCard key={i} result={result} revealed={i < revealedCount} />
             ))}
@@ -471,7 +470,7 @@ function ResultCardLarge({ result, revealed }: { result: PullResult; revealed: b
     const isEpicPlus = char.rarity === 'Epic' || char.rarity === 'Legendary';
     return (
       <div
-        className={`relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto h-72 w-56 ${
+        className={`relative overflow-hidden rounded-2xl border-3 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto h-[28rem] w-[18rem] ${
           revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-6 opacity-0'
         } ${isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
       >
@@ -480,14 +479,14 @@ function ResultCardLarge({ result, revealed }: { result: PullResult; revealed: b
             <img src={char.image} alt={char.name} className="h-full w-full object-cover object-top"
               onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
           ) : (
-            <div className="flex h-full w-full items-center justify-center font-black text-white/10" style={{ fontSize: '5rem' }}>
+            <div className="flex h-full w-full items-center justify-center font-black text-white/10" style={{ fontSize: '8rem' }}>
               {char.name.charAt(0)}
             </div>
           )}
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pb-3 pt-10">
-          <div className="text-center text-base font-bold text-white">{char.name}</div>
-          <div className={`text-center text-sm ${s.text}`}>{RARITY_SYM[char.rarity]} {char.rarity}</div>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pb-4 pt-14">
+          <div className="text-center text-xl font-bold text-white">{char.name}</div>
+          <div className={`text-center text-base ${s.text}`}>{RARITY_SYM[char.rarity]} {char.rarity}</div>
         </div>
       </div>
     );
@@ -499,14 +498,14 @@ function ItemCardLarge({ item, revealed }: { item: EquipmentItem; revealed: bool
   const s = RARITY_CARD[item.rarity];
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto flex h-72 w-56 flex-col items-center justify-center ${
+      className={`relative overflow-hidden rounded-2xl border-3 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto flex h-[28rem] w-[18rem] flex-col items-center justify-center ${
         revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-6 opacity-0'
       }`}
     >
-      <div className="text-5xl mb-3">{SLOT_EMOJI[item.slot]}</div>
-      <div className="text-base font-bold text-white text-center px-2">{item.name}</div>
-      <div className={`text-sm ${s.text}`}>{RARITY_SYM[item.rarity]} {item.rarity}</div>
-      <div className="mt-3 rounded-lg bg-black/40 px-3 py-1.5 text-xs text-white/70">
+      <div className="text-7xl mb-4">{SLOT_EMOJI[item.slot]}</div>
+      <div className="text-xl font-bold text-white text-center px-3">{item.name}</div>
+      <div className={`text-base ${s.text} mt-1`}>{RARITY_SYM[item.rarity]} {item.rarity}</div>
+      <div className="mt-4 rounded-lg bg-black/40 px-4 py-2 text-sm text-white/70">
         {STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}
       </div>
     </div>
@@ -520,7 +519,7 @@ function ResultCard({ result, revealed }: { result: PullResult; revealed: boolea
     const isEpicPlus = char.rarity === 'Epic' || char.rarity === 'Legendary';
     return (
       <div
-        className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} h-36 w-full ${
+        className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} h-56 w-full ${
           revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-3 opacity-0'
         } ${isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
       >
@@ -529,16 +528,16 @@ function ResultCard({ result, revealed }: { result: PullResult; revealed: boolea
             <img src={char.image} alt={char.name} className="h-full w-full object-cover object-top"
               onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
           ) : (
-            <div className="flex h-full w-full items-center justify-center font-black text-white/10" style={{ fontSize: '2.5rem' }}>
+            <div className="flex h-full w-full items-center justify-center font-black text-white/10" style={{ fontSize: '4rem' }}>
               {char.name.charAt(0)}
             </div>
           )}
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 pb-1.5 pt-6">
-          <div className="truncate text-center text-[10px] font-bold leading-tight text-white">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-2 pb-2 pt-8">
+          <div className="truncate text-center text-sm font-bold leading-tight text-white">
             {char.name.split(' ')[0]}
           </div>
-          <div className={`text-center text-[8px] ${s.text}`}>
+          <div className={`text-center text-xs ${s.text}`}>
             {RARITY_SYM[char.rarity]} {char.rarity}
           </div>
         </div>
@@ -550,14 +549,14 @@ function ResultCard({ result, revealed }: { result: PullResult; revealed: boolea
   const s = RARITY_CARD[item.rarity];
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} flex h-36 w-full flex-col items-center justify-center ${
+      className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} flex h-56 w-full flex-col items-center justify-center ${
         revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-3 opacity-0'
       }`}
     >
-      <div className="text-2xl mb-1">{SLOT_EMOJI[item.slot]}</div>
-      <div className="truncate text-center text-[9px] font-bold text-white px-1">{item.name}</div>
-      <div className={`text-center text-[8px] ${s.text}`}>{RARITY_SYM[item.rarity]}</div>
-      <div className="mt-1 text-[8px] text-white/50">{STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}</div>
+      <div className="text-4xl mb-2">{SLOT_EMOJI[item.slot]}</div>
+      <div className="truncate text-center text-sm font-bold text-white px-2 w-full">{item.name}</div>
+      <div className={`text-center text-xs ${s.text} mt-0.5`}>{RARITY_SYM[item.rarity]} {item.rarity}</div>
+      <div className="mt-2 text-xs text-white/50">{STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}</div>
     </div>
   );
 }

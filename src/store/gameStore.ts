@@ -6,6 +6,21 @@ import { ADVENTURE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, DUPLICATE_REFUN
 import { levelFromXp, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
 import { upgradeItem, UPGRADE_COSTS } from '../data/equipment';
 
+export interface PlayerStats {
+  totalPulls: number;
+  coinsSpent: number;
+  rubiesSpent: number;
+  monstersDefeated: number;
+  teammatesPerished: number;
+  itemsObtained: number;
+}
+
+export interface PlayerProfile {
+  name: string;
+  pfp: string;
+  favouriteCharId: string;
+}
+
 interface GameState {
   coins: number;
   rubies: number;
@@ -20,6 +35,8 @@ interface GameState {
   inventory: EquipmentItem[];
   equipped: Record<string, { weapon?: string; armor?: string; accessory?: string }>;
   pityCounters: Record<BannerType, number>;
+  playerStats: PlayerStats;
+  profile: PlayerProfile;
 
   pull: (count: number, banner: BannerType) => void;
   setTeam: (ids: string[]) => void;
@@ -34,9 +51,14 @@ interface GameState {
   upgradeEquipment: (uid: string) => void;
   equipItem: (charId: string, itemUid: string) => void;
   unequipItem: (charId: string, slot: 'weapon' | 'armor' | 'accessory') => void;
+  setProfile: (partial: Partial<PlayerProfile>) => void;
+  recordDefeats: (monstersKilled: number, alliesLost: number) => void;
+  wipeData: () => void;
 }
 
 const DEFAULT_PITY: Record<BannerType, number> = { standard: 0, adventure: 0, demon: 0, beyond: 0 };
+const DEFAULT_STATS: PlayerStats = { totalPulls: 0, coinsSpent: 0, rubiesSpent: 0, monstersDefeated: 0, teammatesPerished: 0, itemsObtained: 0 };
+const DEFAULT_PROFILE: PlayerProfile = { name: '', pfp: 'default', favouriteCharId: '' };
 
 export const useGameStore = create<GameState>()(
   persist(
@@ -54,10 +76,13 @@ export const useGameStore = create<GameState>()(
       inventory: [],
       equipped: {},
       pityCounters: { ...DEFAULT_PITY },
+      playerStats: { ...DEFAULT_STATS },
+      profile: { ...DEFAULT_PROFILE },
 
       pull: (count, banner) => {
         const state = get();
         const pity = { ...(state.pityCounters ?? DEFAULT_PITY) };
+        const stats = { ...(state.playerStats ?? DEFAULT_STATS) };
 
         if (banner === 'standard') {
           const cost = STANDARD_PULL_COST * count;
@@ -67,6 +92,7 @@ export const useGameStore = create<GameState>()(
           const newCounts = { ...state.ownedCounts };
           const newInventory = [...(state.inventory ?? [])];
           let currentPity = pity[banner] ?? 0;
+          let itemsGot = 0;
 
           for (let i = 0; i < count; i++) {
             currentPity++;
@@ -81,11 +107,15 @@ export const useGameStore = create<GameState>()(
               if (c.rarity === 'Legendary') currentPity = 0;
             } else {
               newInventory.push(result.item);
+              itemsGot++;
               if (result.item.rarity === 'Legendary') currentPity = 0;
             }
           }
           pity[banner] = currentPity;
-          set({ coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: 'standard', pityCounters: pity });
+          stats.totalPulls += count;
+          stats.coinsSpent += cost;
+          stats.itemsObtained += itemsGot;
+          set({ coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: 'standard', pityCounters: pity, playerStats: stats });
         } else {
           const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : ADVENTURE_PULL_COST;
           const cost = rubyCost * count;
@@ -95,6 +125,7 @@ export const useGameStore = create<GameState>()(
           const newCounts = { ...state.ownedCounts };
           const newInventory = [...(state.inventory ?? [])];
           let currentPity = pity[banner] ?? 0;
+          let itemsGot = 0;
 
           for (let i = 0; i < count; i++) {
             currentPity++;
@@ -109,11 +140,15 @@ export const useGameStore = create<GameState>()(
               if (c.rarity === 'Legendary') currentPity = 0;
             } else {
               newInventory.push(result.item);
+              itemsGot++;
               if (result.item.rarity === 'Legendary') currentPity = 0;
             }
           }
           pity[banner] = currentPity;
-          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: banner, pityCounters: pity });
+          stats.totalPulls += count;
+          stats.rubiesSpent += cost;
+          stats.itemsObtained += itemsGot;
+          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: banner, pityCounters: pity, playerStats: stats });
         }
       },
 
@@ -222,6 +257,37 @@ export const useGameStore = create<GameState>()(
           const charSlots = eq[charId] ?? {};
           eq[charId] = { ...charSlots, [slot]: undefined };
           return { equipped: eq };
+        });
+      },
+
+      setProfile: (partial) => set((s) => ({ profile: { ...(s.profile ?? DEFAULT_PROFILE), ...partial } })),
+
+      recordDefeats: (monstersKilled, alliesLost) => {
+        set((s) => {
+          const stats = { ...(s.playerStats ?? DEFAULT_STATS) };
+          stats.monstersDefeated += monstersKilled;
+          stats.teammatesPerished += alliesLost;
+          return { playerStats: stats };
+        });
+      },
+
+      wipeData: () => {
+        set({
+          coins: 1500,
+          rubies: 10,
+          ownedCounts: {},
+          characterData: {},
+          activeTeamIds: [],
+          unlockedStageIds: [STAGES[0].id],
+          lastPullResults: [],
+          lastPullBanner: 'standard',
+          items: { 'healing-herb': 3 },
+          currentNodeId: 'mossgate',
+          inventory: [],
+          equipped: {},
+          pityCounters: { ...DEFAULT_PITY },
+          playerStats: { ...DEFAULT_STATS },
+          profile: { ...DEFAULT_PROFILE },
         });
       },
     }),

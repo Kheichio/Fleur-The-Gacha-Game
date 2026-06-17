@@ -12,9 +12,9 @@ export const ITEM_DROP_RATE      = 0.25;
 
 const BANNER_RATES: Record<BannerType, Record<Rarity, number>> = {
   standard:  { Common: 65,   Rare: 28,   Epic: 6.5,  Legendary: 0.5 },
-  adventure: { Common: 50,   Rare: 35,   Epic: 13.5, Legendary: 1.5 },
-  demon:     { Common: 45,   Rare: 34,   Epic: 19,   Legendary: 2   },
-  beyond:    { Common: 45,   Rare: 34,   Epic: 19,   Legendary: 2   },
+  adventure: { Common: 51,   Rare: 35,   Epic: 13.5, Legendary: 0.5 },
+  demon:     { Common: 46.5, Rare: 34,   Epic: 19,   Legendary: 0.5 },
+  beyond:    { Common: 46.5, Rare: 34,   Epic: 19,   Legendary: 0.5 },
 };
 
 const ALL_STORY_IDS   = ['auxentios-brigach', 'roza-defteros', 'casilda', 'fleur-theos', 'tomoe-yoshimi', 'anwaltin-von-berater'];
