@@ -66,6 +66,7 @@ export default function LuggageScreen({ onBack }: Props) {
   const inventory = useGameStore((s) => s.inventory) ?? [];
   const coins = useGameStore((s) => s.coins);
   const upgradeEquipment = useGameStore((s) => s.upgradeEquipment);
+  const sellItem = useGameStore((s) => s.sellItem);
 
   const [category, setCategory] = useState<Category>('all');
   const [sortKey, setSortKey] = useState<SortKey>('rarity');
@@ -282,6 +283,24 @@ export default function LuggageScreen({ onBack }: Props) {
             ) : (
               <div className="text-center text-sm font-bold text-yellow-400">★ Max Level ★</div>
             )}
+
+            <div className="h-px bg-slate-800/60 my-4" />
+
+            {/* Sell */}
+            <div>
+              {(() => {
+                const baseValue: Record<string, number> = { Common: 50, Rare: 150, Epic: 500, Legendary: 2000 };
+                const sellValue = Math.round((baseValue[selected.rarity] ?? 50) * (1 + selected.level * 0.5));
+                return (
+                  <button
+                    onClick={() => { sellItem(selected.uid); setSelectedUid(null); }}
+                    className="w-full rounded-xl border border-red-900/40 bg-red-950/20 py-2.5 text-xs font-bold text-red-400/70 transition hover:bg-red-950/40 hover:text-red-300"
+                  >
+                    Sell for {sellValue.toLocaleString()} 🪙
+                  </button>
+                );
+              })()}
+            </div>
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center">

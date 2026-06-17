@@ -20,13 +20,16 @@ export default function Hub({ onNavigate }: Props) {
         background: 'linear-gradient(160deg, #0a0a1a 0%, #0d1117 30%, #12081f 60%, #0a0e1a 100%)',
       }}
     >
-      {/* Account — top left */}
+      {/* Account — top left, large and noticeable */}
       <button
         onClick={() => onNavigate('account')}
-        className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-slate-700/50 bg-slate-900/90 px-3.5 py-1.5 shadow-lg transition hover:border-slate-600 hover:bg-slate-800/90"
+        className="absolute left-4 top-4 z-10 flex items-center gap-3 rounded-2xl border-2 border-yellow-600/40 bg-slate-900/90 px-5 py-3 shadow-xl transition duration-200 hover:scale-105 hover:border-yellow-400/60 hover:bg-slate-800/90"
       >
-        <span className="text-base">👤</span>
-        <span className="text-sm font-semibold text-slate-300">Account</span>
+        <span className="text-3xl">👤</span>
+        <div className="flex flex-col items-start">
+          <span className="text-sm font-bold text-slate-200">Account</span>
+          <span className="text-[10px] text-slate-500">Profile &amp; Stats</span>
+        </div>
       </button>
 
       {/* Currency — top right */}

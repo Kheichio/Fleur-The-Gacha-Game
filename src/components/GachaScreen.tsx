@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
 import { ADVENTURE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, STANDARD_PULL_COST, PITY_THRESHOLD } from '../systems/gacha';
 import { SLOT_EMOJI, STAT_LABELS } from '../data/equipment';
+import { playLegendaryReveal } from '../systems/audio';
 import type { BannerType, Character, EquipmentItem, PullResult, Rarity } from '../types';
 import CurrencyBar from './CurrencyBar';
 
@@ -118,6 +119,8 @@ export default function GachaScreen({ onBack }: Props) {
   const [pullResults, setPullResults]   = useState<PullResult[]>([]);
   const [revealedCount, setRevealedCount] = useState(0);
   const [showOverlay, setShowOverlay]   = useState(false);
+  const [legendaryChar, setLegendaryChar] = useState<Character | null>(null);
+  const [legendaryDone, setLegendaryDone] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const banner    = BANNER_CONFIGS[bannerIdx];
@@ -127,24 +130,42 @@ export default function GachaScreen({ onBack }: Props) {
   const pity = pityCounters[banner.id] ?? 0;
 
   useEffect(() => {
-    if (!showOverlay || revealedCount >= pullResults.length) return;
+    if (!showOverlay || legendaryChar || revealedCount >= pullResults.length) return;
     const delay = revealedCount === 0 ? 400 : 500;
     const t = setTimeout(() => setRevealedCount((c) => c + 1), delay);
     return () => clearTimeout(t);
-  }, [showOverlay, revealedCount, pullResults.length]);
+  }, [showOverlay, revealedCount, pullResults.length, legendaryChar]);
 
   function doPull(count: number) {
     pull(count, banner.id);
     const results = useGameStore.getState().lastPullResults;
     setPullResults(results);
     setRevealedCount(0);
+    setLegendaryDone(false);
+
+    const firstLegendary = results.find(
+      (r) => r.type === 'character' && r.character.rarity === 'Legendary'
+    );
+    if (firstLegendary && firstLegendary.type === 'character') {
+      setLegendaryChar(firstLegendary.character);
+      playLegendaryReveal();
+    } else {
+      setLegendaryChar(null);
+    }
     setShowOverlay(true);
+  }
+
+  function dismissLegendary() {
+    setLegendaryChar(null);
+    setLegendaryDone(true);
   }
 
   function closeOverlay() {
     setShowOverlay(false);
     setPullResults([]);
     setRevealedCount(0);
+    setLegendaryChar(null);
+    setLegendaryDone(false);
   }
 
   function goPrev() { setBannerIdx((i) => (i > 0 ? i - 1 : BANNER_CONFIGS.length - 1)); }
@@ -159,84 +180,85 @@ export default function GachaScreen({ onBack }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#070d1a] text-slate-100">
-      {/* Header */}
-      <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+    <div
+      className="relative h-screen w-screen overflow-hidden text-slate-100"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* ── Fullscreen banner track ── */}
+      <div
+        className="absolute inset-0 flex transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        style={{
+          width: `${BANNER_CONFIGS.length * 100}%`,
+          transform: `translateX(-${bannerIdx * (100 / BANNER_CONFIGS.length)}%)`,
+        }}
+      >
+        {BANNER_CONFIGS.map((b) => (
+          <BannerPanel key={b.id} banner={b} />
+        ))}
+      </div>
+
+      {/* ── Overlaid UI ── */}
+
+      {/* Top bar */}
+      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-5 py-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
+          className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-sm font-semibold text-slate-300 backdrop-blur-sm transition hover:bg-black/60 hover:text-white"
         >
           ← Back
         </button>
         <span
           style={{ fontFamily: "'Cinzel', Georgia, serif" }}
-          className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-600"
+          className="text-xs font-bold uppercase tracking-[0.3em] text-white/30"
         >
           Contract
         </span>
-        <CurrencyBar />
+        <div className="rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm">
+          <CurrencyBar />
+        </div>
       </div>
 
-      {/* Slider — with horizontal margin, fills available space */}
-      <div
-        className="relative flex-1 overflow-hidden mx-6 my-2 rounded-2xl"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+      {/* Prev / Next arrows — big and noticeable */}
+      <button
+        onClick={goPrev}
+        className="absolute left-4 top-1/2 z-20 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/20 bg-black/50 text-3xl font-bold text-white/70 backdrop-blur-sm transition hover:scale-110 hover:border-white/40 hover:bg-black/70 hover:text-white"
       >
-        {/* Track */}
-        <div
-          className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
-          style={{
-            width: `${BANNER_CONFIGS.length * 100}%`,
-            transform: `translateX(-${bannerIdx * (100 / BANNER_CONFIGS.length)}%)`,
-          }}
-        >
-          {BANNER_CONFIGS.map((b) => (
-            <BannerPanel key={b.id} banner={b} pity={pityCounters[b.id] ?? 0} />
-          ))}
-        </div>
+        ‹
+      </button>
+      <button
+        onClick={goNext}
+        className="absolute right-4 top-1/2 z-20 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/20 bg-black/50 text-3xl font-bold text-white/70 backdrop-blur-sm transition hover:scale-110 hover:border-white/40 hover:bg-black/70 hover:text-white"
+      >
+        ›
+      </button>
 
-        {/* Arrows */}
-        <button
-          onClick={goPrev}
-          className="absolute left-2 top-1/2 z-20 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/50 text-xl text-white/50 backdrop-blur transition hover:bg-black/70 hover:text-white/80"
-        >
-          ‹
-        </button>
-        <button
-          onClick={goNext}
-          className="absolute right-2 top-1/2 z-20 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/50 text-xl text-white/50 backdrop-blur transition hover:bg-black/70 hover:text-white/80"
-        >
-          ›
-        </button>
-
-        {/* Dot indicators */}
-        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5">
-          {BANNER_CONFIGS.map((b, i) => (
-            <button
-              key={b.id}
-              onClick={() => setBannerIdx(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === bannerIdx ? 'h-2 w-6 bg-white/80' : 'h-2 w-2 bg-white/25 hover:bg-white/45'
-              }`}
-            />
-          ))}
-        </div>
+      {/* Dot indicators */}
+      <div className="absolute bottom-[140px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
+        {BANNER_CONFIGS.map((b, i) => (
+          <button
+            key={b.id}
+            onClick={() => setBannerIdx(i)}
+            className={`rounded-full transition-all duration-300 ${
+              i === bannerIdx ? 'h-2.5 w-8 bg-white/80' : 'h-2.5 w-2.5 bg-white/25 hover:bg-white/50'
+            }`}
+          />
+        ))}
       </div>
 
-      {/* Pull controls */}
-      <div className="flex-shrink-0 border-t border-slate-800/70 bg-slate-950/80 px-4 py-4">
-        <div className="mb-1 text-center text-[11px] text-slate-600">{banner.ratesText}</div>
-        <div className="mb-3 text-center text-[10px] text-slate-700">
+      {/* Bottom pull controls — overlaid on banner */}
+      <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-6 pb-5 pt-12">
+        <div className="mb-1 text-center text-[11px] text-white/40">{banner.ratesText}</div>
+        <div className="mb-3 text-center text-[10px] text-white/25">
           Pity: {pity}/{PITY_THRESHOLD} · Guaranteed {RARITY_SYM.Legendary} at {PITY_THRESHOLD}
         </div>
         <div className="flex justify-center gap-3">
           <button
             disabled={!canAfford1}
             onClick={() => doPull(1)}
-            className={`flex w-36 flex-col items-center rounded-xl border py-3 text-sm font-bold transition ${
+            className={`flex w-40 flex-col items-center rounded-xl border py-3.5 text-sm font-bold backdrop-blur-sm transition ${
               canAfford1
-                ? 'border-white/15 bg-white/8 text-white/80 hover:bg-white/[0.14]'
+                ? 'border-white/20 bg-white/10 text-white/90 hover:bg-white/[0.18]'
                 : 'cursor-not-allowed border-white/5 bg-white/5 text-white/25'
             }`}
           >
@@ -248,9 +270,9 @@ export default function GachaScreen({ onBack }: Props) {
           <button
             disabled={!canAfford10}
             onClick={() => doPull(10)}
-            className={`flex w-36 flex-col items-center rounded-xl border py-3 text-sm font-bold transition ${
+            className={`flex w-40 flex-col items-center rounded-xl border py-3.5 text-sm font-bold backdrop-blur-sm transition ${
               canAfford10
-                ? 'border-yellow-500/40 bg-yellow-950/50 text-yellow-200 hover:bg-yellow-900/60'
+                ? 'border-yellow-500/40 bg-yellow-950/60 text-yellow-200 hover:bg-yellow-900/60'
                 : 'cursor-not-allowed border-white/5 bg-white/5 text-white/25'
             }`}
           >
@@ -267,8 +289,13 @@ export default function GachaScreen({ onBack }: Props) {
         )}
       </div>
 
-      {/* Pull overlay */}
-      {showOverlay && (
+      {/* ── Legendary splash ── */}
+      {showOverlay && legendaryChar && !legendaryDone && (
+        <LegendarySplash char={legendaryChar} onDismiss={dismissLegendary} />
+      )}
+
+      {/* ── Pull overlay (after legendary splash if any) ── */}
+      {showOverlay && (!legendaryChar || legendaryDone) && (
         <PullOverlay
           results={pullResults}
           revealedCount={revealedCount}
@@ -280,35 +307,37 @@ export default function GachaScreen({ onBack }: Props) {
   );
 }
 
-function BannerPanel({ banner, pity }: { banner: BannerConfig; pity: number }) {
+/* ── Banner panel (fullscreen) ── */
+
+function BannerPanel({ banner }: { banner: BannerConfig }) {
   const featuredChars = banner.featuredIds
     .map((id) => CHARACTER_POOL.find((c) => c.id === id))
     .filter((c): c is Character => Boolean(c));
 
   return (
     <div
-      className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6"
+      className="relative flex h-full flex-col items-center justify-center"
       style={{ width: `${100 / BANNER_CONFIGS.length}%`, background: banner.bgGradient }}
     >
       {/* Radial glow */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-3/4"
+        className="pointer-events-none absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse at 50% -10%, ${banner.glowColor} 0%, transparent 65%)`,
+          background: `radial-gradient(ellipse at 50% 30%, ${banner.glowColor} 0%, transparent 60%)`,
         }}
       />
 
-      {/* Decorative watermark */}
+      {/* Decorative watermark — large, centered */}
       <div
-        className={`pointer-events-none absolute right-5 top-5 select-none font-black leading-none opacity-[0.04] ${banner.accentColor}`}
-        style={{ fontSize: '90px' }}
+        className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none font-black leading-none opacity-[0.03] ${banner.accentColor}`}
+        style={{ fontSize: '280px' }}
       >
         {banner.decorSymbol}
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-4 text-center">
+      <div className="relative z-[5] flex flex-col items-center gap-5 text-center">
         {/* Tag chip */}
-        <div className={`rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-white/90 ${banner.tagBg}`}>
+        <div className={`rounded-full px-4 py-1 text-[11px] font-black uppercase tracking-[0.25em] text-white/90 ${banner.tagBg}`}>
           {banner.tag}
         </div>
 
@@ -316,44 +345,40 @@ function BannerPanel({ banner, pity }: { banner: BannerConfig; pity: number }) {
         <div>
           <h2
             style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }}
-            className={`text-xl font-black leading-snug sm:text-2xl ${banner.titleColor}`}
+            className={`text-2xl font-black leading-snug sm:text-4xl ${banner.titleColor}`}
           >
             {banner.name}
           </h2>
-          <div className={`mt-1.5 text-[11px] font-semibold uppercase tracking-[0.3em] opacity-60 ${banner.accentColor}`}>
+          <div className={`mt-2 text-xs font-semibold uppercase tracking-[0.35em] opacity-60 ${banner.accentColor}`}>
             {banner.subtitle}
           </div>
         </div>
 
         {/* Featured portraits */}
         {featuredChars.length > 0 && (
-          <div className="flex items-start gap-3">
-            <div className="flex gap-2">
+          <div className="flex items-start gap-4">
+            <div className="flex gap-3">
               {featuredChars.slice(0, 4).map((c) => {
                 const s = RARITY_CARD[c.rarity];
                 return (
-                  <div key={c.id} className="flex flex-col items-center gap-1">
-                    <div className={`h-14 w-14 overflow-hidden rounded-xl border-2 bg-slate-800/80 ${s.border}`}>
+                  <div key={c.id} className="flex flex-col items-center gap-1.5">
+                    <div className={`h-16 w-16 overflow-hidden rounded-xl border-2 bg-slate-800/80 ${s.border}`}>
                       {c.image ? (
-                        <img
-                          src={c.image}
-                          alt={c.name}
-                          className="h-full w-full object-cover object-top"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
-                        />
+                        <img src={c.image} alt={c.name} className="h-full w-full object-cover object-top"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-2xl font-black text-slate-400">
                           {c.name.charAt(0)}
                         </div>
                       )}
                     </div>
-                    <div className={`text-[9px] font-bold ${s.text}`}>{RARITY_SYM[c.rarity]}</div>
+                    <div className={`text-[10px] font-bold ${s.text}`}>{RARITY_SYM[c.rarity]}</div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-1 text-left">
-              <div className="text-[10px] font-black uppercase tracking-wider text-white/50">Featured</div>
+            <div className="mt-2 text-left">
+              <div className="text-[11px] font-black uppercase tracking-wider text-white/50">Featured</div>
               <div className="text-[10px] text-white/35">50% rate-up</div>
               <div className="text-[10px] italic text-white/20">when matching rarity</div>
             </div>
@@ -361,18 +386,134 @@ function BannerPanel({ banner, pity }: { banner: BannerConfig; pity: number }) {
         )}
 
         {/* Currency pill */}
-        <div className={`rounded-full border border-current/20 px-4 py-1 text-xs font-semibold ${banner.accentColor}`}>
+        <div className={`rounded-full border border-current/20 px-5 py-1.5 text-sm font-semibold ${banner.accentColor}`}>
           {banner.currencyIcon} {banner.currencyLabel} · {banner.costPer} per pull
         </div>
 
-        {/* Items note */}
-        <div className="text-[10px] text-white/25 italic">
+        <div className="text-[10px] text-white/20 italic">
           Pulls may contain equipment items
         </div>
       </div>
     </div>
   );
 }
+
+/* ── Legendary splash screen ── */
+
+function LegendarySplash({ char, onDismiss }: { char: Character; onDismiss: () => void }) {
+  const [phase, setPhase] = useState<'flash' | 'reveal' | 'ready'>('flash');
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase('reveal'), 600);
+    const t2 = setTimeout(() => setPhase('ready'), 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-hidden"
+      onClick={phase === 'ready' ? onDismiss : undefined}
+      style={{ cursor: phase === 'ready' ? 'pointer' : 'default' }}
+    >
+      {/* Black base */}
+      <div className="absolute inset-0 bg-black" />
+
+      {/* White flash */}
+      {phase === 'flash' && (
+        <div className="absolute inset-0 legendary-flash bg-yellow-200" />
+      )}
+
+      {/* Rotating rays */}
+      {phase !== 'flash' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="legendary-rays" style={{ width: '200vmax', height: '200vmax' }}>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute left-1/2 top-1/2 origin-center"
+                style={{
+                  width: '4px',
+                  height: '120vmax',
+                  background: 'linear-gradient(to bottom, rgba(251,191,36,0.08), transparent)',
+                  transform: `translate(-50%, -100%) rotate(${i * 30}deg)`,
+                  transformOrigin: 'bottom center',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Character art — fullscreen */}
+      {phase !== 'flash' && (
+        <div className="absolute inset-0 legendary-zoom">
+          {char.image ? (
+            <img
+              src={char.image}
+              alt={char.name}
+              className="h-full w-full object-contain"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="select-none font-black text-yellow-500/20" style={{ fontSize: '30vw' }}>
+                {char.name.charAt(0)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Gradient overlay for text readability */}
+      {phase !== 'flash' && (
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black via-black/70 to-transparent" />
+      )}
+
+      {/* Name + rarity */}
+      {phase !== 'flash' && (
+        <div className="absolute inset-x-0 bottom-0 z-10 pb-16 text-center legendary-text">
+          <div className="text-xs font-black uppercase tracking-[0.5em] text-yellow-400/60 mb-2">
+            ✸ Legendary ✸
+          </div>
+          <h2
+            style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }}
+            className="text-4xl font-black text-white sm:text-5xl"
+          >
+            {char.name}
+          </h2>
+          {phase === 'ready' && (
+            <div className="mt-4 text-sm text-white/40 animate-pulse">
+              Tap to continue
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Gold particles */}
+      {phase !== 'flash' && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div
+              key={i}
+              className="epic-particle absolute rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${40 + Math.random() * 60}%`,
+                width: `${2 + Math.random() * 3}px`,
+                height: `${2 + Math.random() * 3}px`,
+                background: `hsl(${40 + Math.random() * 20}, 100%, ${60 + Math.random() * 30}%)`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 3}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Pull overlay ── */
 
 function PullOverlay({
   results,
@@ -394,7 +535,6 @@ function PullOverlay({
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm ${hasEpicPlus ? 'bg-black/80' : 'bg-black/90'}`}>
-      {/* Epic+ background particles */}
       {hasEpicPlus && <EpicParticles />}
 
       <div className="relative z-10 w-full max-w-7xl px-4 overflow-y-auto max-h-[90vh]">
@@ -450,29 +590,27 @@ function EpicParticles() {
           }}
         />
       ))}
-      {/* Central glow burst */}
       <div
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full epic-glow"
-        style={{
-          width: '300px',
-          height: '300px',
-          background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%)',
-        }}
+        style={{ width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%)' }}
       />
     </div>
   );
 }
 
+/* ── Result cards ── */
+
 function ResultCardLarge({ result, revealed }: { result: PullResult; revealed: boolean }) {
   if (result.type === 'character') {
     const char = result.character;
     const s = RARITY_CARD[char.rarity];
-    const isEpicPlus = char.rarity === 'Epic' || char.rarity === 'Legendary';
+    const isLegendary = char.rarity === 'Legendary';
+    const isEpicPlus = char.rarity === 'Epic' || isLegendary;
     return (
       <div
-        className={`relative overflow-hidden rounded-2xl border-3 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto h-[28rem] w-[18rem] ${
+        className={`relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto h-[28rem] w-[18rem] ${
           revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-6 opacity-0'
-        } ${isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
+        } ${isLegendary && revealed ? 'legendary-card-glow' : isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
       >
         <div className="absolute inset-0">
           {char.image ? (
@@ -491,14 +629,11 @@ function ResultCardLarge({ result, revealed }: { result: PullResult; revealed: b
       </div>
     );
   }
-  return <ItemCardLarge item={result.item} revealed={revealed} />;
-}
-
-function ItemCardLarge({ item, revealed }: { item: EquipmentItem; revealed: boolean }) {
+  const item = result.item;
   const s = RARITY_CARD[item.rarity];
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border-3 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto flex h-[28rem] w-[18rem] flex-col items-center justify-center ${
+      className={`relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b shadow-lg transition-all duration-700 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-xl ${s.glow}` : ''} mx-auto flex h-[28rem] w-[18rem] flex-col items-center justify-center ${
         revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-90 translate-y-6 opacity-0'
       }`}
     >
@@ -516,12 +651,13 @@ function ResultCard({ result, revealed }: { result: PullResult; revealed: boolea
   if (result.type === 'character') {
     const char = result.character;
     const s = RARITY_CARD[char.rarity];
-    const isEpicPlus = char.rarity === 'Epic' || char.rarity === 'Legendary';
+    const isLegendary = char.rarity === 'Legendary';
+    const isEpicPlus = char.rarity === 'Epic' || isLegendary;
     return (
       <div
         className={`relative overflow-hidden rounded-xl border-2 bg-gradient-to-b shadow-lg transition-all duration-500 ${s.border} ${s.from} ${s.to} ${s.glow ? `shadow-lg ${s.glow}` : ''} h-56 w-full ${
           revealed ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-3 opacity-0'
-        } ${isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
+        } ${isLegendary && revealed ? 'legendary-card-glow' : isEpicPlus && revealed ? 'epic-card-glow' : ''}`}
       >
         <div className="absolute inset-0">
           {char.image ? (

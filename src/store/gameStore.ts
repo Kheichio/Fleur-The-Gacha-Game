@@ -53,6 +53,7 @@ interface GameState {
   unequipItem: (charId: string, slot: 'weapon' | 'armor' | 'accessory') => void;
   setProfile: (partial: Partial<PlayerProfile>) => void;
   recordDefeats: (monstersKilled: number, alliesLost: number) => void;
+  sellItem: (uid: string) => void;
   wipeData: () => void;
 }
 
@@ -261,6 +262,25 @@ export const useGameStore = create<GameState>()(
       },
 
       setProfile: (partial) => set((s) => ({ profile: { ...(s.profile ?? DEFAULT_PROFILE), ...partial } })),
+
+      sellItem: (uid) => {
+        set((s) => {
+          const inv = s.inventory ?? [];
+          const idx = inv.findIndex((it) => it.uid === uid);
+          if (idx === -1) return s;
+          const item = inv[idx];
+          const baseValue: Record<string, number> = { Common: 50, Rare: 150, Epic: 500, Legendary: 2000 };
+          const value = Math.round((baseValue[item.rarity] ?? 50) * (1 + item.level * 0.5));
+          const newInv = inv.filter((it) => it.uid !== uid);
+          const eq = { ...(s.equipped ?? {}) };
+          for (const [cid, slots] of Object.entries(eq)) {
+            if (slots[item.slot] === uid) {
+              eq[cid] = { ...slots, [item.slot]: undefined };
+            }
+          }
+          return { coins: s.coins + value, inventory: newInv, equipped: eq };
+        });
+      },
 
       recordDefeats: (monstersKilled, alliesLost) => {
         set((s) => {

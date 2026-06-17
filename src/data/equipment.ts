@@ -105,9 +105,7 @@ export function upgradeItem(item: EquipmentItem): EquipmentItem {
   const boostedMain = { ...item.mainStat, value: Math.round(item.mainStat.value * 1.2) };
   const boostedSubs = item.subStats.map((s) => ({ ...s, value: Math.round(s.value * 1.15) }));
 
-  const usedStats = new Set([item.mainStat.stat, ...item.subStats.map((s) => s.stat)]);
-  const available = ANY_STATS.filter((s) => !usedStats.has(s));
-  const newStatKey = available.length > 0 ? pick(available) : pick(ANY_STATS.filter((s) => s !== item.mainStat.stat));
+  const newStatKey = pick(ANY_STATS);
   const [subMin, subMax] = SUB_STAT_RANGE[item.rarity];
 
   boostedSubs.push({ stat: newStatKey, value: randInt(subMin, subMax) });

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
+import { SLOT_EMOJI, STAT_LABELS } from '../data/equipment';
 import { effectiveStats, xpProgress, MAX_LEVEL, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
-import type { Character, Stats } from '../types';
+import type { Character, EquipmentItem, Stats } from '../types';
 import CurrencyBar from './CurrencyBar';
 
 interface Props {
@@ -67,9 +68,9 @@ export default function CharacterScreen({ onBack }: Props) {
   const owned = CHARACTER_POOL
     .filter((c) => ownedCounts[c.id] > 0)
     .sort((a, b) => {
-      const prioDiff = RARITY_PRIORITY[b.rarity] - RARITY_PRIORITY[a.rarity];
-      if (prioDiff !== 0) return prioDiff;
-      return (characterData[b.id]?.level ?? 1) - (characterData[a.id]?.level ?? 1);
+      const lvDiff = (characterData[b.id]?.level ?? 1) - (characterData[a.id]?.level ?? 1);
+      if (lvDiff !== 0) return lvDiff;
+      return RARITY_PRIORITY[b.rarity] - RARITY_PRIORITY[a.rarity];
     });
 
   const [selectedCharId, setSelectedCharId] = useState<string | null>(owned[0]?.id ?? null);
@@ -216,7 +217,7 @@ export default function CharacterScreen({ onBack }: Props) {
                   coins={coins}
                 />
               )}
-              {activeTab === 'equip' && <EquipTab />}
+              {activeTab === 'equip' && <EquipTab charId={char.id} />}
             </>
           )}
         </div>
@@ -543,7 +544,32 @@ function TrainTab({ data, prog, xpBarPct, canTrain, onTrain, coins }: {
   );
 }
 
-function EquipTab() {
+function EquipTab({ charId }: { charId: string }) {
+  const inventory = useGameStore((s) => s.inventory) ?? [];
+  const equipped = useGameStore((s) => s.equipped) ?? {};
+  const equipItem = useGameStore((s) => s.equipItem);
+  const unequipItem = useGameStore((s) => s.unequipItem);
+  const [pickerSlot, setPickerSlot] = useState<'weapon' | 'armor' | 'accessory' | null>(null);
+
+  const charEquip = equipped[charId] ?? {};
+  const slots: { key: 'weapon' | 'armor' | 'accessory'; emoji: string; label: string }[] = [
+    { key: 'weapon', emoji: '⚔️', label: 'Weapon' },
+    { key: 'armor', emoji: '🛡️', label: 'Armour' },
+    { key: 'accessory', emoji: '💍', label: 'Accessory' },
+  ];
+
+  function getEquippedItem(slot: 'weapon' | 'armor' | 'accessory'): EquipmentItem | null {
+    const uid = charEquip[slot];
+    if (!uid) return null;
+    return inventory.find((it) => it.uid === uid) ?? null;
+  }
+
+  const availableForSlot = pickerSlot
+    ? inventory.filter((it) => it.slot === pickerSlot)
+    : [];
+
+  const RARITY_COL: Record<string, string> = { Common: 'text-slate-400', Rare: 'text-blue-300', Epic: 'text-purple-300', Legendary: 'text-yellow-300' };
+
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -552,25 +578,84 @@ function EquipTab() {
       >
         Equipment Slots
       </div>
-      {[
-        { emoji: '⚔️', label: 'Weapon',    desc: 'Increases ATK stats' },
-        { emoji: '🛡️', label: 'Armour',    desc: 'Increases DEF stats' },
-        { emoji: '💍', label: 'Accessory', desc: 'Special effects' },
-      ].map(({ emoji, label, desc }) => (
-        <div
-          key={label}
-          className="flex items-center gap-3 rounded-xl border border-slate-800/50 bg-slate-900/40 p-3"
-        >
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-700/50 bg-slate-800/60 text-2xl opacity-30">
-            {emoji}
+      {slots.map(({ key, emoji, label }) => {
+        const item = getEquippedItem(key);
+        return (
+          <div key={key} className="rounded-xl border border-slate-800/50 bg-slate-900/40 p-3">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border bg-slate-800/60 text-2xl ${item ? 'border-yellow-600/40' : 'border-slate-700/50 opacity-30'}`}>
+                {emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                {item ? (
+                  <>
+                    <div className="text-sm font-bold text-white truncate">{item.name}</div>
+                    <div className={`text-[10px] font-semibold ${RARITY_COL[item.rarity]}`}>
+                      {item.rarity} · +{item.level}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}
+                      {item.subStats.length > 0 && ` · ${item.subStats.map((s) => `${STAT_LABELS[s.stat]} +${s.value}`).join(' · ')}`}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-bold text-slate-500">{label}</div>
+                    <div className="text-[10px] text-slate-700 italic">Empty</div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => setPickerSlot(key)}
+                className="flex-1 rounded-lg border border-yellow-700/30 bg-yellow-950/30 py-1.5 text-[10px] font-bold text-yellow-300 transition hover:bg-yellow-900/40"
+              >
+                {item ? 'Change' : 'Equip'}
+              </button>
+              {item && (
+                <button
+                  onClick={() => unequipItem(charId, key)}
+                  className="rounded-lg border border-slate-700/40 px-3 py-1.5 text-[10px] font-bold text-slate-500 transition hover:text-red-400"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
-          <div>
-            <div className="text-sm font-bold text-slate-400">{label}</div>
-            <div className="text-[10px] text-slate-600">{desc}</div>
-            <div className="mt-0.5 text-[9px] italic text-slate-700">— Empty · Coming Soon</div>
+        );
+      })}
+
+      {/* Item picker overlay */}
+      {pickerSlot && (
+        <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800/90 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Choose {pickerSlot}</span>
+            <button onClick={() => setPickerSlot(null)} className="text-xs text-slate-500 hover:text-white">✕</button>
           </div>
+          {availableForSlot.length === 0 ? (
+            <div className="py-3 text-center text-xs text-slate-600">No {pickerSlot}s in luggage</div>
+          ) : (
+            <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+              {availableForSlot.map((it) => (
+                <button
+                  key={it.uid}
+                  onClick={() => { equipItem(charId, it.uid); setPickerSlot(null); }}
+                  className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/60 p-2 text-left transition hover:bg-slate-700/50"
+                >
+                  <span className="text-lg">{SLOT_EMOJI[it.slot]}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate text-xs font-bold text-white">{it.name}</div>
+                    <div className={`text-[9px] ${RARITY_COL[it.rarity]}`}>
+                      {it.rarity} +{it.level} · {STAT_LABELS[it.mainStat.stat]} +{it.mainStat.value}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      ))}
+      )}
     </div>
   );
 }

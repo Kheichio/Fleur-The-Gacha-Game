@@ -43,7 +43,8 @@ export default function AccountScreen({ onBack }: Props) {
   const [showFavPicker, setShowFavPicker] = useState(false);
 
   const owned = CHARACTER_POOL.filter((c) => ownedCounts[c.id] > 0);
-  const currentPfp = PFP_OPTIONS.find((p) => p.id === profile.pfp) ?? PFP_OPTIONS[0];
+  const currentPfp = PFP_OPTIONS.find((p) => p.id === profile.pfp);
+  const currentPfpChar = !currentPfp ? CHARACTER_POOL.find((c) => c.id === profile.pfp) : null;
   const favChar = profile.favouriteCharId ? CHARACTER_POOL.find((c) => c.id === profile.favouriteCharId) : null;
 
   const charsByRarity: Record<Rarity, number> = { Common: 0, Rare: 0, Epic: 0, Legendary: 0 };
@@ -82,9 +83,13 @@ export default function AccountScreen({ onBack }: Props) {
           <div className="mb-6 flex flex-col items-center gap-3">
             <button
               onClick={() => setShowPfpPicker(true)}
-              className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-yellow-600/40 bg-slate-800/60 text-5xl transition hover:border-yellow-400/60 hover:bg-slate-700/60"
+              className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-yellow-600/40 bg-slate-800/60 text-5xl transition hover:border-yellow-400/60 hover:bg-slate-700/60"
             >
-              {currentPfp.display}
+              {currentPfpChar?.image ? (
+                <img src={currentPfpChar.image} alt="" className="h-full w-full object-cover" />
+              ) : (
+                (currentPfp ?? PFP_OPTIONS[0]).display
+              )}
             </button>
             <button
               onClick={() => setShowPfpPicker(true)}
@@ -251,9 +256,10 @@ export default function AccountScreen({ onBack }: Props) {
       {/* PFP picker modal */}
       {showPfpPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowPfpPicker(false)}>
-          <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-4 text-base font-bold text-white">Choose Avatar</h3>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="mb-3 text-[9px] font-bold uppercase tracking-wider text-slate-600">Icons</div>
+            <div className="grid grid-cols-4 gap-3 mb-5">
               {PFP_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
@@ -267,6 +273,32 @@ export default function AccountScreen({ onBack }: Props) {
                 </button>
               ))}
             </div>
+            {owned.length > 0 && (
+              <>
+                <div className="mb-3 text-[9px] font-bold uppercase tracking-wider text-slate-600">Characters</div>
+                <div className="grid grid-cols-4 gap-3">
+                  {owned.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setProfile({ pfp: c.id }); setShowPfpPicker(false); }}
+                      className={`flex flex-col items-center gap-1 rounded-xl border p-2 transition hover:scale-105 ${
+                        profile.pfp === c.id ? 'border-yellow-500 bg-yellow-950/40' : 'border-slate-700 bg-slate-800/60 hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-600 bg-slate-700">
+                        {c.image ? (
+                          <img src={c.image} alt={c.name} className="h-full w-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-lg font-black text-slate-400">{c.name.charAt(0)}</div>
+                        )}
+                      </div>
+                      <span className="w-full truncate text-center text-[8px] text-slate-400">{c.name.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
