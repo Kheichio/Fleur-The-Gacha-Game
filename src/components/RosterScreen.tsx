@@ -26,12 +26,12 @@ export default function RosterScreen({ onBack }: Props) {
       <button className="btn-secondary self-start" onClick={onBack}>
         ← Back
       </button>
-      <h2 className="text-2xl font-bold">Roster</h2>
+      <h2 className="text-2xl font-bold">Party</h2>
       <div className="text-sm opacity-80">
-        Pick up to 3 characters for your active team ({activeTeamIds.length}/3)
+        Pick up to 3 characters for your active party ({activeTeamIds.length}/3)
       </div>
       {owned.length === 0 ? (
-        <div className="opacity-70">No characters yet — try the Gacha!</div>
+        <div className="opacity-70">No characters yet — try the Contract!</div>
       ) : (
         <div className="flex max-w-3xl flex-wrap justify-center gap-3">
           {owned.map((c) => (

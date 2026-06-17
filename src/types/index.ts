@@ -1,4 +1,5 @@
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
+export type BannerType = 'standard' | 'adventure';
 
 export interface Skill {
   name: string;
@@ -19,6 +20,7 @@ export interface Character {
   rarity: Rarity;
   stats: Stats;
   skill: Skill;
+  image?: string;
 }
 
 export interface Stage {

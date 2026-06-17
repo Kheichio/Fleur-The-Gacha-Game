@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
 import { STAGES } from '../data/stages';
+import { ENCOUNTERS } from '../data/encounters';
 import type { BattleUnit } from '../types';
 import { buildTurnOrder, calcDamage, pickTarget, toBattleUnit } from '../systems/battle';
 
@@ -15,7 +16,7 @@ type Status = 'ongoing' | 'won' | 'lost';
 export default function BattleScreen({ stageId, onExit }: Props) {
   const activeTeamIds = useGameStore((s) => s.activeTeamIds);
   const completeStage = useGameStore((s) => s.completeStage);
-  const stage = useMemo(() => STAGES.find((s) => s.id === stageId)!, [stageId]);
+  const stage = useMemo(() => [...STAGES, ...ENCOUNTERS].find((s) => s.id === stageId)!, [stageId]);
 
   const [units, setUnits] = useState<BattleUnit[]>(() => {
     const playerUnits = activeTeamIds
@@ -167,7 +168,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
 
       {status === 'won' && (
         <div className="flex flex-col items-center gap-3">
-          <div className="text-2xl text-green-400">Victory! +{stage.goldReward} gems</div>
+          <div className="text-2xl text-green-400">Victory! 🪙 +{stage.goldReward} coins</div>
           <button className="btn" onClick={onExit}>
             Continue
           </button>

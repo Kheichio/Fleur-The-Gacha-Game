@@ -18,9 +18,20 @@ export default function CharacterCard({ character, selected, onClick, count }: P
         RARITY_COLORS[character.rarity]
       } ${selected ? 'ring-2 ring-white' : ''} ${interactive ? 'cursor-pointer hover:scale-105' : ''}`}
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-700 text-2xl font-bold">
-        {character.name.charAt(0)}
-      </div>
+      {character.image ? (
+        <img
+          src={character.image}
+          alt={character.name}
+          className="h-14 w-14 rounded-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg';
+          }}
+        />
+      ) : (
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-700 text-2xl font-bold">
+          {character.name.charAt(0)}
+        </div>
+      )}
       <div className="text-sm font-semibold">{character.name}</div>
       <div className="text-xs opacity-80">{character.rarity}</div>
       <div className="text-[10px] opacity-70">
