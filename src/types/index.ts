@@ -5,6 +5,7 @@ export interface Skill {
   name: string;
   multiplier: number;
   cooldown: number;
+  type?: 'melee' | 'magic';
 }
 
 export interface Stats {
@@ -21,6 +22,13 @@ export interface Character {
   stats: Stats;
   skill: Skill;
   image?: string;
+  description?: string;
+}
+
+export interface CharacterSaveData {
+  level: number;
+  xp: number;
+  enhancement: number;
 }
 
 export interface Stage {
