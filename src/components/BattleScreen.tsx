@@ -216,39 +216,41 @@ export default function BattleScreen({ stageId, onExit }: Props) {
 
       {/* Arena */}
       <div
-        className="relative flex items-end justify-between px-6 py-8 gap-4"
+        className="relative flex items-end justify-center gap-8 px-4 py-8"
         style={{
           background: 'linear-gradient(to bottom, #1a3a5c 0%, #1a3a5c 28%, #4a8c30 28%, #3d7826 60%, #2d5c1a 100%)',
-          minHeight: '230px',
+          minHeight: '300px',
         }}
       >
         {/* Ground line decoration */}
-        <div className="absolute left-0 right-0 border-b border-black/20" style={{ bottom: '40%' }} />
+        <div className="absolute left-0 right-0 border-b border-black/20" style={{ bottom: '38%' }} />
 
         {/* Player team */}
-        <div className="flex gap-3 z-10">
+        <div className="flex items-end gap-4 z-10">
           {units.filter((u) => u.isPlayer).map((unit) => (
             <UnitSprite
               key={unit.uid}
               unit={unit}
               flashType={hitFlash?.uid === unit.uid ? hitFlash.type : null}
               glow={actionPhase === 'pick-ally' && unit.isPlayer && unit.alive ? 'green' : null}
+              isCurrentActor={currentActor?.uid === unit.uid && status === 'ongoing'}
               onClick={() => handleAllyClick(unit)}
             />
           ))}
         </div>
 
         {/* VS */}
-        <div className="text-white/20 text-2xl font-black select-none z-10">VS</div>
+        <div className="text-white/15 text-3xl font-black select-none z-10 mb-8">VS</div>
 
         {/* Enemy team */}
-        <div className="flex gap-3 z-10">
+        <div className="flex items-end gap-4 z-10">
           {units.filter((u) => !u.isPlayer).map((unit) => (
             <UnitSprite
               key={unit.uid}
               unit={unit}
               flashType={hitFlash?.uid === unit.uid ? hitFlash.type : null}
               glow={actionPhase === 'pick-enemy' && !unit.isPlayer && unit.alive ? 'red' : null}
+              isCurrentActor={currentActor?.uid === unit.uid && status === 'ongoing'}
               onClick={() => handleEnemyClick(unit)}
             />
           ))}
@@ -362,11 +364,13 @@ function UnitSprite({
   unit,
   flashType,
   glow,
+  isCurrentActor,
   onClick,
 }: {
   unit: BattleUnit;
   flashType: 'phys' | 'magic' | 'heal' | null;
   glow: 'red' | 'green' | null;
+  isCurrentActor: boolean;
   onClick: () => void;
 }) {
   const hpPct = Math.max(0, (unit.currentHp / unit.maxHp) * 100);
@@ -377,14 +381,25 @@ function UnitSprite({
   else if (flashType === 'heal') ringClass = 'ring-4 ring-green-400';
   else if (glow === 'red') ringClass = 'ring-2 ring-red-400 animate-pulse cursor-crosshair';
   else if (glow === 'green') ringClass = 'ring-2 ring-green-400 animate-pulse cursor-pointer';
+  else if (isCurrentActor && unit.isPlayer && unit.alive) ringClass = 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-500/50';
+
+  const shouldBounce = isCurrentActor && unit.isPlayer && unit.alive && !flashType;
 
   return (
     <div
       onClick={glow ? onClick : undefined}
       className={`flex flex-col items-center gap-1 ${!unit.alive ? 'opacity-30 grayscale' : ''} transition-all duration-150`}
     >
+      {/* Turn indicator */}
+      {isCurrentActor && unit.isPlayer && unit.alive && (
+        <div className="text-yellow-400 text-xs leading-none mb-0.5 animate-pulse">▼</div>
+      )}
+      {(!isCurrentActor || !unit.isPlayer || !unit.alive) && (
+        <div className="text-transparent text-xs leading-none mb-0.5">▼</div>
+      )}
+
       {/* Portrait */}
-      <div className={`relative h-16 w-16 overflow-hidden rounded-full border-2 transition-all duration-150 ${unit.alive ? 'border-slate-500' : 'border-slate-800'} ${ringClass}`}>
+      <div className={`relative h-20 w-20 overflow-hidden rounded-full border-2 transition-all duration-150 ${unit.alive ? 'border-slate-500' : 'border-slate-800'} ${ringClass} ${shouldBounce ? 'animate-bounce' : ''}`}>
         {unit.character.image ? (
           <img
             src={unit.character.image}
@@ -393,7 +408,7 @@ function UnitSprite({
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-slate-700 text-2xl font-black text-slate-300">
+          <div className="flex h-full w-full items-center justify-center bg-slate-700 text-3xl font-black text-slate-300">
             {unit.character.name.charAt(0)}
           </div>
         )}
@@ -401,12 +416,14 @@ function UnitSprite({
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-2xl">💀</div>
         )}
       </div>
+
       {/* Name */}
-      <div className="max-w-[68px] truncate text-center text-[9px] font-semibold text-white">
+      <div className={`max-w-[80px] truncate text-center text-[10px] font-semibold ${isCurrentActor && unit.isPlayer ? 'text-yellow-300' : 'text-white'}`}>
         {unit.character.name.split(' ')[0]}
       </div>
+
       {/* HP bar */}
-      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-black/50">
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-black/50">
         <div
           className={`h-full rounded-full transition-all duration-300 ${hpPct > 50 ? 'bg-green-400' : hpPct > 25 ? 'bg-yellow-400' : 'bg-red-500'}`}
           style={{ width: `${hpPct}%` }}

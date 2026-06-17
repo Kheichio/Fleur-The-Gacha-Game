@@ -83,34 +83,35 @@ export default function CharacterScreen({ onBack }: Props) {
     <div className="flex h-screen overflow-hidden bg-[#070d1a] text-slate-100">
 
       {/* ── Far-left nav icons ── */}
-      <nav className="flex w-14 flex-col items-center border-r border-slate-800/50 bg-slate-950/70 py-4">
+      <nav className="flex w-20 flex-col items-center border-r border-slate-800/50 bg-slate-950/70 py-5">
         <button
           onClick={onBack}
-          className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-800/60 hover:text-slate-300"
+          className="mb-4 flex h-12 w-14 items-center justify-center gap-1 rounded-lg text-sm font-semibold text-slate-500 transition hover:bg-slate-800/60 hover:text-slate-200"
           title="Back to Hub"
         >
-          ←
+          <span>←</span>
+          <span className="text-[10px]">Back</span>
         </button>
-        <div className="mb-3 h-px w-8 bg-slate-800/80" />
+        <div className="mb-4 h-px w-12 bg-slate-800/80" />
         {NAV_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             title={tab.label}
-            className={`mb-1 flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-xl transition ${
+            className={`mb-2 flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-xl transition ${
               activeTab === tab.id
                 ? 'border border-yellow-700/40 bg-yellow-950/50 text-yellow-400'
-                : 'text-slate-600 hover:bg-slate-800/40 hover:text-slate-300'
+                : 'text-slate-500 hover:bg-slate-800/40 hover:text-slate-200'
             }`}
           >
-            <span className="text-lg leading-none">{tab.symbol}</span>
-            <span className="text-[8px] font-semibold uppercase tracking-wider">{tab.label}</span>
+            <span className="text-2xl leading-none">{tab.symbol}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide">{tab.label}</span>
           </button>
         ))}
       </nav>
 
       {/* ── Info panel ── */}
-      <div className="flex w-72 flex-col overflow-hidden border-r border-slate-800/50 bg-slate-950/40">
+      <div className="flex w-80 flex-col overflow-hidden border-r border-slate-800/50 bg-slate-950/40">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800/50 px-4 py-3">
           <span
@@ -136,43 +137,43 @@ export default function CharacterScreen({ onBack }: Props) {
             <>
               {/* Character header (always shown) */}
               <div className="mb-5">
-                <div className="mb-2 flex items-start gap-2.5">
-                  <span className={`mt-0.5 text-2xl leading-none ${RARITY_TEXT[char.rarity]}`}>
+                <div className="mb-3 flex items-start gap-3">
+                  <span className={`mt-1 text-3xl leading-none ${RARITY_TEXT[char.rarity]}`}>
                     {RARITY_SYMBOL[char.rarity]}
                   </span>
                   <div className="min-w-0">
                     <h2
                       style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }}
-                      className="text-base font-black leading-tight text-white"
+                      className="text-xl font-black leading-tight text-white"
                     >
                       {char.name}
                     </h2>
-                    <div className={`text-xs font-semibold ${RARITY_TEXT[char.rarity]}`}>
+                    <div className={`mt-0.5 text-sm font-semibold ${RARITY_TEXT[char.rarity]}`}>
                       {char.rarity} · {getClass(char)}
                     </div>
                   </div>
                 </div>
 
                 {/* Enhancement diamonds */}
-                <div className="mt-3 flex items-center gap-1.5">
+                <div className="mt-3 flex items-center gap-2">
                   {[0, 1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className={`h-3.5 w-3.5 rotate-45 border-2 transition-all ${
+                      className={`h-4 w-4 rotate-45 border-2 transition-all ${
                         i < data.enhancement
                           ? 'border-yellow-400 bg-yellow-400 shadow-sm shadow-yellow-400/50'
                           : 'border-slate-700 bg-transparent'
                       }`}
                     />
                   ))}
-                  <span className="ml-1 text-[10px] text-slate-600">{data.enhancement}/5</span>
+                  <span className="ml-1 text-xs text-slate-500">{data.enhancement}/5</span>
                 </div>
 
                 {/* Level */}
-                <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-sm font-bold text-slate-400">Lv.</span>
-                  <span className="text-3xl font-black text-white leading-none">{data.level}</span>
-                  <span className="text-sm text-slate-700">/{MAX_LEVEL}</span>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-base font-bold text-slate-400">Lv.</span>
+                  <span className="text-4xl font-black leading-none text-white">{data.level}</span>
+                  <span className="text-base text-slate-700">/{MAX_LEVEL}</span>
                 </div>
               </div>
 
@@ -262,14 +263,14 @@ export default function CharacterScreen({ onBack }: Props) {
       </div>
 
       {/* ── Right sidebar: character list ── */}
-      <aside className="flex w-24 flex-col overflow-y-auto border-l border-slate-800/50 bg-slate-950/50">
-        <div className="sticky top-0 border-b border-slate-800/50 bg-slate-950/80 px-2 py-2 text-center">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-700">Owned</span>
+      <aside className="flex w-28 flex-col overflow-y-auto border-l border-slate-800/50 bg-slate-950/50">
+        <div className="sticky top-0 border-b border-slate-800/50 bg-slate-950/80 px-2 py-2.5 text-center">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Owned</span>
         </div>
 
         {owned.length === 0 ? (
           <div className="flex flex-1 items-center justify-center px-2">
-            <span className="text-center text-[9px] text-slate-700">None yet</span>
+            <span className="text-center text-xs text-slate-700">None yet</span>
           </div>
         ) : (
           owned.map((c) => {
@@ -279,28 +280,28 @@ export default function CharacterScreen({ onBack }: Props) {
               <button
                 key={c.id}
                 onClick={() => setSelectedCharId(c.id)}
-                className={`flex w-full flex-col items-center gap-1 border-b border-slate-800/30 px-1 py-3 transition ${
+                className={`flex w-full flex-col items-center gap-1.5 border-b border-slate-800/30 px-2 py-3 transition ${
                   isSelected ? 'bg-yellow-950/25' : 'hover:bg-slate-800/40'
                 }`}
               >
-                <div className={`h-14 w-14 overflow-hidden rounded-xl border-2 bg-slate-800 ${
+                <div className={`h-16 w-16 overflow-hidden rounded-xl border-2 bg-slate-800 ${
                   isSelected ? 'border-yellow-500/60' : RARITY_BORDER[c.rarity]
                 }`}>
                   {c.image ? (
                     <img src={c.image} alt={c.name} className="h-full w-full object-cover object-top"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xl font-black text-slate-400">
+                    <div className="flex h-full w-full items-center justify-center text-2xl font-black text-slate-400">
                       {c.name.charAt(0)}
                     </div>
                   )}
                 </div>
-                <div className="max-w-full truncate text-center text-[9px] font-semibold text-slate-300">
+                <div className="max-w-full truncate text-center text-[11px] font-semibold text-slate-300">
                   {c.name.split(' ')[0]}
                 </div>
-                <div className={`text-[8px] font-semibold ${RARITY_TEXT[c.rarity]}`}>Lv.{d.level}</div>
+                <div className={`text-[10px] font-semibold ${RARITY_TEXT[c.rarity]}`}>Lv.{d.level}</div>
                 {isSelected && (
-                  <div className="h-0.5 w-10 rounded-full bg-yellow-500/50" />
+                  <div className="h-0.5 w-12 rounded-full bg-yellow-500/50" />
                 )}
               </button>
             );
@@ -322,12 +323,12 @@ function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
   onTrain: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* Stats list */}
       <div>
         <div
           style={{ fontFamily: "'Cinzel', Georgia, serif" }}
-          className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600"
+          className="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500"
         >
           Stats
         </div>
@@ -337,21 +338,21 @@ function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
           { icon: '🛡️', label: 'DEF', value: scaled.def   },
           { icon: '💨', label: 'SPD', value: scaled.speed },
         ] as const).map(({ icon, label, value }) => (
-          <div key={label} className="flex items-center justify-between border-b border-slate-800/40 py-2.5 last:border-0">
-            <div className="flex items-center gap-2 text-slate-400">
-              <span className="w-5 text-center text-sm">{icon}</span>
-              <span className="text-sm">{label}</span>
+          <div key={label} className="flex items-center justify-between border-b border-slate-800/40 py-3 last:border-0">
+            <div className="flex items-center gap-2.5 text-slate-300">
+              <span className="w-5 text-center text-base">{icon}</span>
+              <span className="text-sm font-medium">{label}</span>
             </div>
-            <span className="text-sm font-bold text-slate-100">{value}</span>
+            <span className="text-base font-bold text-white">{value}</span>
           </div>
         ))}
       </div>
 
       {/* Skill */}
-      <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-3">
-        <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Signature Skill</div>
-        <div className="text-sm font-bold text-white">{char.skill.name}</div>
-        <div className="mt-0.5 text-[10px] text-slate-500">
+      <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-4">
+        <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500">Signature Skill</div>
+        <div className="text-base font-bold text-white">{char.skill.name}</div>
+        <div className="mt-1 text-xs text-slate-400">
           {char.skill.type === 'magic' ? '✨ Magic' : '⚔️ Melee'}
           {' · '}{char.skill.multiplier}× damage
           {' · '}{char.skill.cooldown}-turn CD
@@ -360,24 +361,24 @@ function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
 
       {/* Description */}
       {char.description && (
-        <p style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-[11px] italic leading-relaxed text-slate-500">
+        <p style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-xs italic leading-relaxed text-slate-400">
           {char.description}
         </p>
       )}
 
       {/* Quick Train */}
       <div>
-        <div className="mb-1 flex justify-between text-[10px] text-slate-600">
+        <div className="mb-1.5 flex justify-between text-xs text-slate-500">
           <span>XP Progress</span>
           {prog.needed > 0 && <span>{prog.current}/{prog.needed}</span>}
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
           <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${xpBarPct}%` }} />
         </div>
         <button
           disabled={!canTrain}
           onClick={onTrain}
-          className="mt-3 w-full rounded-xl border border-blue-700/40 bg-blue-950/40 py-2.5 text-xs font-bold text-blue-300 transition hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-3 w-full rounded-xl border border-blue-700/40 bg-blue-950/40 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-40"
         >
           ◈ Train (+{TRAIN_XP} XP) — {TRAIN_COST.toLocaleString()} 🪙
         </button>

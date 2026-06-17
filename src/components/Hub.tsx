@@ -2,6 +2,7 @@ import { useGameStore } from '../store/gameStore';
 
 type NavScreen = 'contract' | 'party' | 'travel' | 'characters';
 
+
 interface Props {
   onNavigate: (screen: NavScreen) => void;
 }
@@ -9,6 +10,8 @@ interface Props {
 export default function Hub({ onNavigate }: Props) {
   const coins = useGameStore((s) => s.coins);
   const rubies = useGameStore((s) => s.rubies);
+  const addCoins = useGameStore((s) => s.addCoins);
+  const addRubies = useGameStore((s) => s.addRubies);
 
   return (
     <div className="relative flex min-h-screen flex-col items-center bg-slate-950 p-6">
@@ -76,6 +79,22 @@ export default function Hub({ onNavigate }: Props) {
           <span className="text-4xl transition-transform duration-200 group-hover:scale-110">🗺️</span>
           <span className="text-base font-bold text-amber-200">Travel</span>
           <span className="text-[11px] font-normal text-amber-400/70">Explore the world</span>
+        </button>
+      </div>
+
+      {/* Secret dev buttons — barely visible, hover to reveal */}
+      <div className="absolute bottom-3 left-3 flex gap-1.5 opacity-[0.12] hover:opacity-50 transition-opacity duration-300 z-20">
+        <button
+          onClick={() => addCoins(10000)}
+          className="rounded border border-yellow-800/60 bg-slate-950 px-2 py-1 text-[9px] font-mono text-yellow-600"
+        >
+          +🪙
+        </button>
+        <button
+          onClick={() => addRubies(100)}
+          className="rounded border border-red-900/60 bg-slate-950 px-2 py-1 text-[9px] font-mono text-red-600"
+        >
+          +💎
         </button>
       </div>
     </div>
