@@ -578,7 +578,16 @@ function EquipTab({ charId }: { charId: string }) {
       })
     : [];
 
+  function getEquippedBy(uid: string): string | null {
+    for (const [cid, slots] of Object.entries(equipped)) {
+      if (slots?.weapon === uid || slots?.armor === uid || slots?.accessory === uid) return cid;
+    }
+    return null;
+  }
+
   const hoveredItem = hoveredUid ? inventory.find((it) => it.uid === hoveredUid) ?? null : null;
+  const hoveredEquippedBy = hoveredItem ? getEquippedBy(hoveredItem.uid) : null;
+  const hoveredEquippedChar = hoveredEquippedBy ? CHARACTER_POOL.find((c) => c.id === hoveredEquippedBy) ?? null : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -674,14 +683,26 @@ function EquipTab({ charId }: { charId: string }) {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                    {availableForSlot.map((it) => (
+                    {availableForSlot.map((it) => {
+                      const eqBy = getEquippedBy(it.uid);
+                      const eqChar = eqBy ? CHARACTER_POOL.find((c) => c.id === eqBy) : null;
+                      return (
                       <button
                         key={it.uid}
                         onClick={() => { equipItem(charId, it.uid); setPickerSlot(null); setHoveredUid(null); }}
                         onMouseEnter={() => setHoveredUid(it.uid)}
                         onMouseLeave={() => setHoveredUid(null)}
-                        className={`group flex flex-col items-center gap-2 rounded-2xl border-2 bg-gradient-to-b p-4 text-center transition-all duration-150 hover:scale-[1.04] ${EQUIP_RARITY_BORDER[it.rarity]} ${EQUIP_RARITY_BG[it.rarity]} ${hoveredUid === it.uid ? 'ring-2 ring-yellow-400/60' : ''}`}
+                        className={`relative group flex flex-col items-center gap-2 rounded-2xl border-2 bg-gradient-to-b p-4 text-center transition-all duration-150 hover:scale-[1.04] ${EQUIP_RARITY_BORDER[it.rarity]} ${EQUIP_RARITY_BG[it.rarity]} ${hoveredUid === it.uid ? 'ring-2 ring-yellow-400/60' : ''}`}
                       >
+                        {eqChar && (
+                          <div className="absolute -right-1 -top-1 h-7 w-7 overflow-hidden rounded-full border-2 border-yellow-500/70 bg-slate-800 shadow-lg z-10" title={`Equipped by ${eqChar.name}`}>
+                            {eqChar.image ? (
+                              <img src={eqChar.image} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[9px] font-black text-slate-300">{eqChar.name.charAt(0)}</div>
+                            )}
+                          </div>
+                        )}
                         <div className="text-3xl">{SLOT_EMOJI[it.slot]}</div>
                         <div className="w-full truncate text-sm font-bold text-white">{it.name}</div>
                         <div className={`text-xs font-semibold ${EQUIP_RARITY_COL[it.rarity]}`}>
@@ -701,7 +722,8 @@ function EquipTab({ charId }: { charId: string }) {
                           </div>
                         )}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -731,6 +753,21 @@ function EquipTab({ charId }: { charId: string }) {
                         <span className="ml-1.5 text-xs text-slate-500">+{hoveredItem.level}/5</span>
                       </div>
                     </div>
+
+                    {hoveredEquippedChar && (
+                      <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-700/30 bg-yellow-950/20 px-3 py-2">
+                        <div className="h-6 w-6 overflow-hidden rounded-full border border-yellow-600/50 bg-slate-700">
+                          {hoveredEquippedChar.image ? (
+                            <img src={hoveredEquippedChar.image} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[8px] font-black text-slate-300">{hoveredEquippedChar.name.charAt(0)}</div>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-yellow-300/80">
+                          Equipped by <span className="font-bold text-yellow-200">{hoveredEquippedChar.name}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="h-px bg-slate-800/60 mb-4" />
 
