@@ -11,6 +11,7 @@ import { playMeleeHit, playMagicHit, playHeal } from '../systems/audio';
 
 interface Props {
   stageId: string;
+  area?: string;
   onExit: () => void;
 }
 
@@ -18,16 +19,44 @@ type Status = 'ongoing' | 'won' | 'lost';
 type ActionPhase = 'idle' | 'choose' | 'pick-enemy' | 'pick-item' | 'pick-ally';
 type PendingAction = 'phys-attack' | 'magic-attack' | 'skill' | null;
 
-export default function BattleScreen({ stageId, onExit }: Props) {
+const AREA_BACKGROUNDS: Record<string, string> = {
+  meadow:     'linear-gradient(180deg, #4a90c8 0%, #6aabe0 20%, #6aabe0 30%, #7db844 30%, #5a9a30 55%, #3d7820 80%, #2a5c16 100%)',
+  forest:     'linear-gradient(180deg, #1a3a28 0%, #1e4a30 15%, #1a3a28 30%, #2d5c1a 30%, #1e4a14 55%, #142e0e 80%, #0d1f08 100%)',
+  crossroads: 'linear-gradient(180deg, #3a3020 0%, #5a4830 20%, #4a3c28 30%, #8a7a50 30%, #6a5c3a 55%, #4a3e28 80%, #2a2418 100%)',
+  ruins:      'linear-gradient(180deg, #2a1a2a 0%, #3a2030 20%, #281828 30%, #4a4050 30%, #3a3040 55%, #2a2030 80%, #1a1020 100%)',
+  spire:      'linear-gradient(180deg, #0a0a1a 0%, #151530 15%, #1a1a3a 30%, #2a2a3a 30%, #1e1e2e 55%, #141420 80%, #0a0a14 100%)',
+  bastion:    'linear-gradient(180deg, #2a1a0a 0%, #3a2810 20%, #2a1a0a 30%, #5a4a30 30%, #4a3c28 55%, #3a2e1e 80%, #201a10 100%)',
+  gate:       'linear-gradient(180deg, #1a0808 0%, #2a1010 15%, #1a0808 30%, #3a2020 30%, #2a1818 55%, #1a1010 80%, #0a0404 100%)',
+  town:       'linear-gradient(180deg, #4a7ac8 0%, #5a90d0 20%, #5a90d0 30%, #8a7a60 30%, #7a6a50 55%, #6a5a40 80%, #4a3e30 100%)',
+  default:    'linear-gradient(180deg, #0f2840 0%, #1a3a5c 20%, #1a3a5c 35%, #3a7a28 35%, #2d6420 55%, #1e4a14 75%, #142e0e 100%)',
+};
+
+const STAGE_AREA_MAP: Record<string, string> = {
+  'stage-1': 'meadow',
+  'stage-2': 'forest',
+  'stage-3': 'ruins',
+  'stage-4': 'spire',
+  'stage-5': 'gate',
+  'enc-wolves': 'forest',
+  'enc-bandits': 'crossroads',
+  'enc-mercenaries': 'bastion',
+  'town-bandits': 'town',
+};
+
+export default function BattleScreen({ stageId, area, onExit }: Props) {
   const activeTeamIds = useGameStore((s) => s.activeTeamIds);
   const characterData = useGameStore((s) => s.characterData);
+  const storedHp = useGameStore((s) => s.currentHp) ?? {};
   const completeStage = useGameStore((s) => s.completeStage);
   const gainXp = useGameStore((s) => s.gainXp);
+  const updateHp = useGameStore((s) => s.updateHp);
   const items = useGameStore((s) => s.items);
   const spendItem = useGameStore((s) => s.spendItem);
   const recordDefeats = useGameStore((s) => s.recordDefeats);
 
   const stage = useMemo(() => [...STAGES, ...ENCOUNTERS].find((s) => s.id === stageId)!, [stageId]);
+  const bgArea = area ?? STAGE_AREA_MAP[stageId] ?? 'default';
+  const bgGradient = AREA_BACKGROUNDS[bgArea] ?? AREA_BACKGROUNDS.default;
 
   const initialUnits = useMemo(() => {
     const playerUnits = activeTeamIds
@@ -35,7 +64,14 @@ export default function BattleScreen({ stageId, onExit }: Props) {
       .filter((c): c is NonNullable<typeof c> => Boolean(c))
       .map((c) => {
         const d = characterData[c.id] ?? { level: 1, xp: 0, enhancement: 0 };
-        return toBattleUnit({ ...c, stats: effectiveStats(c.stats, d.level, d.enhancement) }, true);
+        const stats = effectiveStats(c.stats, d.level, d.enhancement);
+        const unit = toBattleUnit({ ...c, stats }, true);
+        const saved = storedHp[c.id];
+        if (saved !== undefined && saved >= 0) {
+          const hp = Math.min(saved, unit.maxHp);
+          return { ...unit, currentHp: hp, alive: hp > 0 };
+        }
+        return unit;
       });
     const enemyUnits = stage.enemyTeam.map((c) => toBattleUnit(c, false));
     return [...playerUnits, ...enemyUnits];
@@ -66,6 +102,16 @@ export default function BattleScreen({ stageId, onExit }: Props) {
   function showDamage(uid: string, amount: number, isCrit: boolean) {
     setDamagePopup({ uid, amount, isCrit });
     setTimeout(() => setDamagePopup((prev) => (prev?.uid === uid ? null : prev)), 900);
+  }
+
+  function saveHpToStore(currentUnits: BattleUnit[]) {
+    const hpMap: Record<string, number> = {};
+    for (const u of currentUnits) {
+      if (u.isPlayer) {
+        hpMap[u.character.id] = u.currentHp;
+      }
+    }
+    updateHp(hpMap);
   }
 
   function startNewRound(currentUnits: BattleUnit[]) {
@@ -117,19 +163,18 @@ export default function BattleScreen({ stageId, onExit }: Props) {
       actionLabel = `uses ${actor.character.skill.name} on`;
     } else if (type === 'magic-attack') {
       attackType = 'magic';
-      multiplier = 1;
       actionLabel = 'casts magic at';
     } else {
       attackType = 'melee';
-      multiplier = 1;
       actionLabel = 'strikes';
     }
 
     const damage = calcDamage(actor, target, multiplier, attackType);
-    const isCrit = damage > Math.max(1, Math.round(
+    const baseDmg = Math.max(1, Math.round(
       (attackType === 'magic' ? actor.character.stats.magAtk : actor.character.stats.physAtk) * multiplier
       - (attackType === 'magic' ? target.character.stats.magDef : target.character.stats.physDef) * 0.5
     ));
+    const isCrit = damage > baseDmg;
 
     if (attackType === 'magic') {
       playMagicHit();
@@ -160,6 +205,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
       advanceTurn(updated);
     } else {
       setUnits(updated);
+      saveHpToStore(updated);
     }
   }
 
@@ -248,33 +294,23 @@ export default function BattleScreen({ stageId, onExit }: Props) {
           <span className="rounded-full bg-slate-800/60 px-2.5 py-0.5 text-xs font-semibold text-slate-400">Round {round}</span>
         </div>
         <button
-          onClick={() => setStatus('lost')}
+          onClick={() => { saveHpToStore(units); setStatus('lost'); }}
           className="rounded-lg border border-red-800/50 bg-red-950/50 px-4 py-1.5 text-sm font-semibold text-red-400 transition hover:bg-red-900/60"
         >
           Forfeit
         </button>
       </div>
 
-      {/* Arena — fullscreen feel */}
+      {/* Arena */}
       <div
         className="relative flex-1 flex items-center justify-center gap-12 px-8 overflow-hidden"
-        style={{
-          background: 'linear-gradient(180deg, #0f2840 0%, #1a3a5c 20%, #1a3a5c 35%, #3a7a28 35%, #2d6420 55%, #1e4a14 75%, #142e0e 100%)',
-        }}
+        style={{ background: bgGradient }}
       >
-        {/* Atmospheric elements */}
         <div className="pointer-events-none absolute inset-0" style={{
-          background: 'radial-gradient(ellipse at 50% 20%, rgba(100,180,255,0.06) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse at 50% 20%, rgba(100,180,255,0.04) 0%, transparent 60%)',
         }} />
         <div className="pointer-events-none absolute bottom-0 inset-x-0 h-1/3" style={{
-          background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
-        }} />
-
-        {/* Ground texture */}
-        <div className="pointer-events-none absolute inset-x-0 opacity-[0.04]" style={{
-          top: '35%', bottom: 0,
-          backgroundImage: 'radial-gradient(circle, #4a8c30 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)',
         }} />
 
         {/* Player team */}
@@ -292,7 +328,6 @@ export default function BattleScreen({ stageId, onExit }: Props) {
           ))}
         </div>
 
-        {/* VS divider */}
         <div className="z-10 flex flex-col items-center gap-1 mb-6">
           <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
           <div className="text-white/10 text-2xl font-black select-none">VS</div>
@@ -314,7 +349,6 @@ export default function BattleScreen({ stageId, onExit }: Props) {
           ))}
         </div>
 
-        {/* Turn label */}
         {status === 'ongoing' && currentActor && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1 text-xs text-white/60 backdrop-blur-sm">
             {currentActor.alive ? `${currentActor.character.name.split(' ')[0]}'s turn` : 'Resolving…'}
@@ -433,7 +467,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
         )}
       </div>
 
-      {/* Battle log — collapsible at bottom */}
+      {/* Battle log */}
       <div className="flex-shrink-0 max-h-28 overflow-y-auto border-t border-slate-800/40 bg-slate-950/60 px-5 py-2">
         {log.slice(-8).map((entry, i) => (
           <div key={i} className={`text-xs leading-relaxed ${i === log.slice(-8).length - 1 ? 'text-slate-300' : 'text-slate-600'}`}>{entry}</div>
@@ -444,12 +478,7 @@ export default function BattleScreen({ stageId, onExit }: Props) {
 }
 
 function UnitSprite({
-  unit,
-  flashType,
-  glow,
-  isCurrentActor,
-  onClick,
-  damagePopup,
+  unit, flashType, glow, isCurrentActor, onClick, damagePopup,
 }: {
   unit: BattleUnit;
   flashType: 'phys' | 'magic' | 'heal' | null;
@@ -475,7 +504,6 @@ function UnitSprite({
       onClick={glow ? onClick : undefined}
       className={`relative flex flex-col items-center gap-1.5 ${!unit.alive ? 'opacity-25 grayscale' : ''} transition-all duration-150`}
     >
-      {/* Damage popup */}
       {damagePopup && (
         <div className={`absolute -top-8 left-1/2 -translate-x-1/2 z-20 font-black text-lg animate-bounce ${
           damagePopup.amount < 0 ? 'text-green-400' : damagePopup.isCrit ? 'text-yellow-300' : 'text-red-400'
@@ -485,7 +513,6 @@ function UnitSprite({
         </div>
       )}
 
-      {/* Turn indicator */}
       {isCurrentActor && unit.alive && (
         <div className={`text-xs leading-none mb-0.5 animate-pulse ${unit.isPlayer ? 'text-yellow-400' : 'text-red-400'}`}>▼</div>
       )}
@@ -493,17 +520,12 @@ function UnitSprite({
         <div className="text-transparent text-xs leading-none mb-0.5">▼</div>
       )}
 
-      {/* Portrait — larger */}
       <div className={`relative h-24 w-24 overflow-hidden rounded-2xl border-2 transition-all duration-150 ${
         unit.alive ? (unit.isPlayer ? 'border-blue-500/50' : 'border-red-500/50') : 'border-slate-800'
       } ${ringClass} ${shouldBounce ? 'animate-bounce' : ''}`}>
         {unit.character.image ? (
-          <img
-            src={unit.character.image}
-            alt={unit.character.name}
-            className="h-full w-full object-cover"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
-          />
+          <img src={unit.character.image} alt={unit.character.name} className="h-full w-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
         ) : (
           <div className={`flex h-full w-full items-center justify-center text-3xl font-black ${unit.isPlayer ? 'bg-blue-900/40 text-blue-300' : 'bg-red-900/40 text-red-300'}`}>
             {unit.character.name.charAt(0)}
@@ -514,14 +536,12 @@ function UnitSprite({
         )}
       </div>
 
-      {/* Name */}
       <div className={`max-w-[96px] truncate text-center text-[11px] font-bold ${
         isCurrentActor && unit.alive ? (unit.isPlayer ? 'text-yellow-300' : 'text-red-300') : 'text-white/80'
       }`}>
         {unit.character.name.split(' ')[0]}
       </div>
 
-      {/* HP bar */}
       <div className="h-2 w-24 overflow-hidden rounded-full bg-black/60 border border-black/30">
         <div
           className={`h-full rounded-full transition-all duration-300 ${hpPct > 50 ? 'bg-green-400' : hpPct > 25 ? 'bg-yellow-400' : 'bg-red-500'}`}

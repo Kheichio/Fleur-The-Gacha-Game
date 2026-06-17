@@ -42,6 +42,7 @@ interface GameState {
   playerStats: PlayerStats;
   profile: PlayerProfile;
   claimedQuests: string[];
+  currentHp: Record<string, number>;
 
   pull: (count: number, banner: BannerType) => void;
   setTeam: (ids: string[]) => void;
@@ -61,6 +62,8 @@ interface GameState {
   sellItem: (uid: string) => void;
   toggleLockItem: (uid: string) => void;
   claimQuest: (questId: string, reward: number) => void;
+  updateHp: (hpMap: Record<string, number>) => void;
+  restAtTown: (cost: number) => void;
   wipeData: () => void;
 }
 
@@ -88,6 +91,7 @@ export const useGameStore = create<GameState>()(
       playerStats: { ...DEFAULT_STATS },
       profile: { ...DEFAULT_PROFILE },
       claimedQuests: [],
+      currentHp: {},
 
       pull: (count, banner) => {
         const state = get();
@@ -308,6 +312,17 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      updateHp: (hpMap) => {
+        set((s) => ({ currentHp: { ...(s.currentHp ?? {}), ...hpMap } }));
+      },
+
+      restAtTown: (cost) => {
+        set((s) => {
+          if (s.coins < cost) return s;
+          return { coins: s.coins - cost, currentHp: {} };
+        });
+      },
+
       wipeData: () => {
         set({
           coins: 1500,
@@ -327,6 +342,7 @@ export const useGameStore = create<GameState>()(
           playerStats: { ...DEFAULT_STATS },
           profile: { ...DEFAULT_PROFILE },
           claimedQuests: [],
+          currentHp: {},
         });
       },
     }),

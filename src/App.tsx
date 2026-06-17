@@ -18,7 +18,7 @@ type Screen =
   | 'luggage'
   | 'account'
   | 'quests'
-  | { battle: string; exitTo: 'hub' | 'travel' };
+  | { battle: string; exitTo: 'hub' | 'travel'; area?: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('hub');
@@ -35,12 +35,13 @@ export default function App() {
       {screen === 'travel' && (
         <TravelScreen
           onBack={() => setScreen('hub')}
-          onBattle={(id) => setScreen({ battle: id, exitTo: 'travel' })}
+          onBattle={(id, area) => setScreen({ battle: id, exitTo: 'travel', area })}
         />
       )}
       {typeof screen === 'object' && (
         <BattleScreen
           stageId={screen.battle}
+          area={screen.area}
           onExit={() => setScreen(screen.exitTo)}
         />
       )}

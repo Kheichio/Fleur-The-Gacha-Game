@@ -50,4 +50,14 @@ export const ENCOUNTERS: Stage[] = [
       foe('merc-captain', 'Mercenary Captain', 180, 30, 16, 12, 'Execute', 2.2),
     ],
   },
+  {
+    id: 'town-bandits',
+    name: 'Town Bandits',
+    goldReward: 100,
+    enemyTeam: [
+      foe('town-thief', 'Street Thief', 80, 15, 6, 13, 'Pickpocket Slash', 1.4),
+      foe('town-thug', 'Alley Thug', 110, 20, 9, 10, 'Sucker Punch', 1.6),
+      foe('town-boss', 'Gang Leader', 130, 24, 11, 11, 'Dirty Strike', 1.8),
+    ],
+  },
 ];

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
+import { effectiveStats } from '../systems/leveling';
 import CurrencyBar from './CurrencyBar';
 
 interface MapNode {
@@ -150,20 +151,34 @@ const DANGER_COLOR: Record<string, string> = { safe: 'text-green-400', easy: 'te
 const DANGER_DOT: Record<string, string> = { safe: 'bg-green-400', easy: 'bg-yellow-300', medium: 'bg-orange-400', hard: 'bg-red-400' };
 const NODE_GLOW: Record<string, string> = { safe: 'shadow-green-500/30', easy: 'shadow-yellow-500/30', medium: 'shadow-orange-500/30', hard: 'shadow-red-500/30' };
 
+const AREA_MAP: Record<string, string> = {
+  mossgate: 'town', 'wilted-meadow': 'meadow', thornwood: 'forest',
+  'bramble-hollow': 'forest', 'amber-crossroads': 'crossroads', saltmere: 'town',
+  'thorned-ruins': 'ruins', 'withering-spire': 'spire', 'crumbled-bastion': 'bastion',
+  'sovereign-bloomguard': 'gate',
+};
+
+const REST_COST = 200;
+
 interface Props {
   onBack: () => void;
-  onBattle: (id: string) => void;
+  onBattle: (id: string, area?: string) => void;
 }
 
 export default function TravelScreen({ onBack, onBattle }: Props) {
   const unlockedStageIds = useGameStore((s) => s.unlockedStageIds);
   const activeTeamIds = useGameStore((s) => s.activeTeamIds);
   const currentNodeId = useGameStore((s) => s.currentNodeId);
+  const coins = useGameStore((s) => s.coins);
+  const currentHp = useGameStore((s) => s.currentHp) ?? {};
+  const characterData = useGameStore((s) => s.characterData);
   const addCoins = useGameStore((s) => s.addCoins);
   const addRubies = useGameStore((s) => s.addRubies);
   const moveToNode = useGameStore((s) => s.moveToNode);
+  const restAtTown = useGameStore((s) => s.restAtTown);
 
   const [event, setEvent] = useState<EventState | null>(null);
+  const [nodeEvents, setNodeEvents] = useState<Record<string, EventState>>({});
 
   const currentNode = MAP_NODES.find((n) => n.id === currentNodeId) ?? MAP_NODES[0];
   const reachableIds = new Set(currentNode.connections);
@@ -174,24 +189,45 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
     return node.type === 'stage' && !!node.stageId && unlockedStageIds.includes(node.stageId);
   }
 
+  function generateNodeEvent(node: MapNode): EventState {
+    const roll = Math.random();
+    if (roll < 0.60) {
+      const pool = ENCOUNTER_POOLS[node.id] ?? ['enc-bandits'];
+      const encId = pool[Math.floor(Math.random() * pool.length)];
+      return { phase: 'battle-ready', node, encounterId: encId };
+    } else if (roll < 0.85) {
+      const coins = Math.floor(Math.random() * 80) + 40;
+      const rubies = Math.random() < 0.2 ? 1 : 0;
+      return { phase: 'loot', node, coins, rubies };
+    } else {
+      const text = REST_TEXTS[Math.floor(Math.random() * REST_TEXTS.length)];
+      return { phase: 'rest', node, text };
+    }
+  }
+
   function triggerNodeEvent(node: MapNode) {
     if (node.type === 'town' || node.type === 'city' || node.type === 'stage') {
       setEvent({ phase: 'approach', node });
       return;
     }
-    const roll = Math.random();
-    if (roll < 0.60) {
-      const pool = ENCOUNTER_POOLS[node.id] ?? ['enc-bandits'];
-      const encId = pool[Math.floor(Math.random() * pool.length)];
-      setEvent({ phase: 'battle-ready', node, encounterId: encId });
-    } else if (roll < 0.85) {
-      const coins = Math.floor(Math.random() * 80) + 40;
-      const rubies = Math.random() < 0.2 ? 1 : 0;
-      setEvent({ phase: 'loot', node, coins, rubies });
+    // Use cached event for wilderness/ruins, or generate + cache a new one
+    const cached = nodeEvents[node.id];
+    if (cached) {
+      setEvent(cached);
     } else {
-      const text = REST_TEXTS[Math.floor(Math.random() * REST_TEXTS.length)];
-      setEvent({ phase: 'rest', node, text });
+      const ev = generateNodeEvent(node);
+      setNodeEvents((prev) => ({ ...prev, [node.id]: ev }));
+      setEvent(ev);
     }
+  }
+
+  function clearNodeEvent(nodeId: string) {
+    setNodeEvents((prev) => {
+      const next = { ...prev };
+      delete next[nodeId];
+      return next;
+    });
+    setEvent(null);
   }
 
   function handleNodeClick(node: MapNode) {
@@ -209,7 +245,7 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
     if (event?.phase !== 'loot') return;
     addCoins(event.coins);
     if (event.rubies) addRubies(event.rubies);
-    setEvent(null);
+    clearNodeEvent(event.node.id);
   }
 
   return (
@@ -397,7 +433,7 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
                       <button
                         className="w-full rounded-xl border border-red-700/50 bg-red-950/50 py-3 text-sm font-bold text-red-200 transition hover:bg-red-900/60"
                         disabled={activeTeamIds.length < 3}
-                        onClick={() => onBattle(event.node.stageId!)}
+                        onClick={() => onBattle(event.node.stageId!, AREA_MAP[event.node.id])}
                       >
                         ⚔️ Enter Battle
                       </button>
@@ -408,8 +444,50 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
                     )
                   )}
                   {(event.node.type === 'town' || event.node.type === 'city') && !event.node.locked && (
-                    <div className="rounded-lg border border-green-800/30 bg-green-950/20 p-3 text-sm text-green-400">
-                      🏠 A safe haven. Rest here freely.
+                    <div className="flex flex-col gap-3">
+                      {/* Party HP status */}
+                      <div className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-3">
+                        <div className="mb-2 text-[9px] font-bold uppercase tracking-wider text-slate-600">Party Status</div>
+                        {activeTeamIds.map((id) => {
+                          const ch = CHARACTER_POOL.find((c) => c.id === id);
+                          if (!ch) return null;
+                          const d = characterData[id] ?? { level: 1, xp: 0, enhancement: 0 };
+                          const maxHp = effectiveStats(ch.stats, d.level, d.enhancement).hp;
+                          const hp = currentHp[id] ?? maxHp;
+                          const pct = Math.round((hp / maxHp) * 100);
+                          return (
+                            <div key={id} className="flex items-center gap-2 py-1">
+                              <span className="w-20 truncate text-xs font-semibold text-slate-300">{ch.name.split(' ')[0]}</span>
+                              <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div className={`h-full rounded-full ${pct > 50 ? 'bg-green-400' : pct > 25 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] text-slate-500 w-16 text-right">{hp}/{maxHp}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Inn — rest and heal */}
+                      <button
+                        onClick={() => { restAtTown(REST_COST); }}
+                        disabled={coins < REST_COST}
+                        className="w-full rounded-xl border border-green-700/40 bg-green-950/30 py-3 text-sm font-bold text-green-300 transition hover:bg-green-900/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        🏨 Rest at Inn — Heal All ({REST_COST} 🪙)
+                      </button>
+
+                      {/* Fight bandits */}
+                      <button
+                        onClick={() => onBattle('town-bandits', 'town')}
+                        disabled={activeTeamIds.length < 3}
+                        className="w-full rounded-xl border border-red-700/40 bg-red-950/30 py-3 text-sm font-bold text-red-300 transition hover:bg-red-900/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        ⚔️ Fight Town Bandits
+                      </button>
+
+                      <div className="text-[10px] text-slate-700 italic text-center">
+                        🏠 A safe haven — rest to restore your party's health.
+                      </div>
                     </div>
                   )}
                 </>
@@ -425,7 +503,7 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
                     <button
                       className="w-full rounded-xl border border-red-700/50 bg-red-950/50 py-3 text-sm font-bold text-red-200 transition hover:bg-red-900/60"
                       disabled={activeTeamIds.length < 3}
-                      onClick={() => onBattle(event.encounterId)}
+                      onClick={() => { clearNodeEvent(event.node.id); onBattle(event.encounterId, AREA_MAP[event.node.id]); }}
                     >
                       ⚔️ Engage!
                     </button>
@@ -474,7 +552,7 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
                   </p>
                   <button
                     className="w-full rounded-xl border border-slate-700/40 py-2 text-sm text-slate-400 transition hover:text-white"
-                    onClick={() => setEvent(null)}
+                    onClick={() => clearNodeEvent(event.node.id)}
                   >
                     Continue
                   </button>
