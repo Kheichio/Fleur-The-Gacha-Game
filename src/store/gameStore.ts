@@ -59,6 +59,7 @@ interface GameState {
   setProfile: (partial: Partial<PlayerProfile>) => void;
   recordDefeats: (monstersKilled: number, alliesLost: number) => void;
   sellItem: (uid: string) => void;
+  toggleLockItem: (uid: string) => void;
   claimQuest: (questId: string, reward: number) => void;
   wipeData: () => void;
 }
@@ -276,6 +277,17 @@ export const useGameStore = create<GameState>()(
             }
           }
           return { coins: s.coins + value, inventory: newInv, equipped: eq };
+        });
+      },
+
+      toggleLockItem: (uid) => {
+        set((s) => {
+          const inv = s.inventory ?? [];
+          const idx = inv.findIndex((it) => it.uid === uid);
+          if (idx === -1) return s;
+          const newInv = [...inv];
+          newInv[idx] = { ...newInv[idx], locked: !newInv[idx].locked };
+          return { inventory: newInv };
         });
       },
 

@@ -43,6 +43,7 @@ export interface EquipmentItem {
   mainStat: { stat: StatKey; value: number };
   subStats: { stat: StatKey; value: number }[];
   level: number;
+  locked?: boolean;
 }
 
 export type PullResult =
