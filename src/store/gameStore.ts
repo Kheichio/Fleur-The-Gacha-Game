@@ -21,9 +21,13 @@ export interface PlayerProfile {
   favouriteCharId: string;
 }
 
+const SHARD_VALUES: Record<string, number> = { Common: 5, Rare: 15, Epic: 50, Legendary: 200 };
+const MAX_USEFUL_COPIES = 6;
+
 interface GameState {
   coins: number;
   rubies: number;
+  shards: number;
   ownedCounts: Record<string, number>;
   characterData: Record<string, CharacterSaveData>;
   activeTeamIds: string[];
@@ -37,6 +41,7 @@ interface GameState {
   pityCounters: Record<BannerType, number>;
   playerStats: PlayerStats;
   profile: PlayerProfile;
+  claimedQuests: string[];
 
   pull: (count: number, banner: BannerType) => void;
   setTeam: (ids: string[]) => void;
@@ -54,6 +59,7 @@ interface GameState {
   setProfile: (partial: Partial<PlayerProfile>) => void;
   recordDefeats: (monstersKilled: number, alliesLost: number) => void;
   sellItem: (uid: string) => void;
+  claimQuest: (questId: string, reward: number) => void;
   wipeData: () => void;
 }
 
@@ -66,6 +72,7 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       coins: 1500,
       rubies: 10,
+      shards: 0,
       ownedCounts: {},
       characterData: {},
       activeTeamIds: [],
@@ -79,77 +86,67 @@ export const useGameStore = create<GameState>()(
       pityCounters: { ...DEFAULT_PITY },
       playerStats: { ...DEFAULT_STATS },
       profile: { ...DEFAULT_PROFILE },
+      claimedQuests: [],
 
       pull: (count, banner) => {
         const state = get();
         const pity = { ...(state.pityCounters ?? DEFAULT_PITY) };
         const stats = { ...(state.playerStats ?? DEFAULT_STATS) };
 
+        const results: PullResult[] = [];
+        const newCounts = { ...state.ownedCounts };
+        const newInventory = [...(state.inventory ?? [])];
+        let currentPity = pity[banner] ?? 0;
+        let itemsGot = 0;
+        let shardsGained = 0;
+        let coinsDelta = 0;
+
         if (banner === 'standard') {
           const cost = STANDARD_PULL_COST * count;
           if (state.coins < cost) return;
-          const results: PullResult[] = [];
-          let coinsDelta = -cost;
-          const newCounts = { ...state.ownedCounts };
-          const newInventory = [...(state.inventory ?? [])];
-          let currentPity = pity[banner] ?? 0;
-          let itemsGot = 0;
-
-          for (let i = 0; i < count; i++) {
-            currentPity++;
-            const forceLegendary = currentPity >= PITY_THRESHOLD;
-            const result = pullOne('standard', forceLegendary);
-            results.push(result);
-
-            if (result.type === 'character') {
-              const c = result.character;
-              if (newCounts[c.id]) coinsDelta += DUPLICATE_REFUND;
-              newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
-              if (c.rarity === 'Legendary') currentPity = 0;
-            } else {
-              newInventory.push(result.item);
-              itemsGot++;
-              if (result.item.rarity === 'Legendary') currentPity = 0;
-            }
-          }
-          pity[banner] = currentPity;
-          stats.totalPulls += count;
+          coinsDelta = -cost;
           stats.coinsSpent += cost;
-          stats.itemsObtained += itemsGot;
-          set({ coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: 'standard', pityCounters: pity, playerStats: stats });
         } else {
           const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : ADVENTURE_PULL_COST;
           const cost = rubyCost * count;
           if (state.rubies < cost) return;
-          const results: PullResult[] = [];
-          let coinsDelta = 0;
-          const newCounts = { ...state.ownedCounts };
-          const newInventory = [...(state.inventory ?? [])];
-          let currentPity = pity[banner] ?? 0;
-          let itemsGot = 0;
-
-          for (let i = 0; i < count; i++) {
-            currentPity++;
-            const forceLegendary = currentPity >= PITY_THRESHOLD;
-            const result = pullOne(banner, forceLegendary);
-            results.push(result);
-
-            if (result.type === 'character') {
-              const c = result.character;
-              if (newCounts[c.id]) coinsDelta += DUPLICATE_REFUND;
-              newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
-              if (c.rarity === 'Legendary') currentPity = 0;
-            } else {
-              newInventory.push(result.item);
-              itemsGot++;
-              if (result.item.rarity === 'Legendary') currentPity = 0;
-            }
-          }
-          pity[banner] = currentPity;
-          stats.totalPulls += count;
           stats.rubiesSpent += cost;
-          stats.itemsObtained += itemsGot;
-          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: banner, pityCounters: pity, playerStats: stats });
+        }
+
+        for (let i = 0; i < count; i++) {
+          currentPity++;
+          const forceLegendary = currentPity >= PITY_THRESHOLD;
+          const result = pullOne(banner, forceLegendary);
+          results.push(result);
+
+          if (result.type === 'character') {
+            const c = result.character;
+            const currentCount = newCounts[c.id] ?? 0;
+            if (currentCount >= MAX_USEFUL_COPIES) {
+              shardsGained += SHARD_VALUES[c.rarity] ?? 5;
+            } else {
+              if (currentCount > 0) coinsDelta += DUPLICATE_REFUND;
+              newCounts[c.id] = currentCount + 1;
+            }
+            if (c.rarity === 'Legendary') currentPity = 0;
+          } else {
+            newInventory.push(result.item);
+            itemsGot++;
+            if (result.item.rarity === 'Legendary') currentPity = 0;
+          }
+        }
+
+        pity[banner] = currentPity;
+        stats.totalPulls += count;
+        stats.itemsObtained += itemsGot;
+
+        if (banner === 'standard') {
+          const cost = STANDARD_PULL_COST * count;
+          set({ coins: state.coins + coinsDelta, shards: (state.shards ?? 0) + shardsGained, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: 'standard', pityCounters: pity, playerStats: stats });
+        } else {
+          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : ADVENTURE_PULL_COST;
+          const cost = rubyCost * count;
+          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, shards: (state.shards ?? 0) + shardsGained, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: banner, pityCounters: pity, playerStats: stats });
         }
       },
 
@@ -291,10 +288,19 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      claimQuest: (questId, reward) => {
+        set((s) => {
+          const claimed = s.claimedQuests ?? [];
+          if (claimed.includes(questId)) return s;
+          return { rubies: s.rubies + reward, claimedQuests: [...claimed, questId] };
+        });
+      },
+
       wipeData: () => {
         set({
           coins: 1500,
           rubies: 10,
+          shards: 0,
           ownedCounts: {},
           characterData: {},
           activeTeamIds: [],
@@ -308,6 +314,7 @@ export const useGameStore = create<GameState>()(
           pityCounters: { ...DEFAULT_PITY },
           playerStats: { ...DEFAULT_STATS },
           profile: { ...DEFAULT_PROFILE },
+          claimedQuests: [],
         });
       },
     }),

@@ -544,12 +544,18 @@ function TrainTab({ data, prog, xpBarPct, canTrain, onTrain, coins }: {
   );
 }
 
+const RARITY_RANK: Record<string, number> = { Legendary: 4, Epic: 3, Rare: 2, Common: 1 };
+const EQUIP_RARITY_COL: Record<string, string> = { Common: 'text-slate-400', Rare: 'text-blue-300', Epic: 'text-purple-300', Legendary: 'text-yellow-300' };
+const EQUIP_RARITY_BG: Record<string, string> = { Common: 'from-slate-900/60 to-slate-800/30', Rare: 'from-blue-950/50 to-slate-800/30', Epic: 'from-purple-950/50 to-slate-800/30', Legendary: 'from-yellow-950/50 to-slate-800/30' };
+const EQUIP_RARITY_BORDER: Record<string, string> = { Common: 'border-slate-600/50', Rare: 'border-blue-500/50', Epic: 'border-purple-500/50', Legendary: 'border-yellow-500/60' };
+
 function EquipTab({ charId }: { charId: string }) {
   const inventory = useGameStore((s) => s.inventory) ?? [];
   const equipped = useGameStore((s) => s.equipped) ?? {};
   const equipItem = useGameStore((s) => s.equipItem);
   const unequipItem = useGameStore((s) => s.unequipItem);
   const [pickerSlot, setPickerSlot] = useState<'weapon' | 'armor' | 'accessory' | null>(null);
+  const [hoveredUid, setHoveredUid] = useState<string | null>(null);
 
   const charEquip = equipped[charId] ?? {};
   const slots: { key: 'weapon' | 'armor' | 'accessory'; emoji: string; label: string }[] = [
@@ -565,10 +571,14 @@ function EquipTab({ charId }: { charId: string }) {
   }
 
   const availableForSlot = pickerSlot
-    ? inventory.filter((it) => it.slot === pickerSlot)
+    ? [...inventory.filter((it) => it.slot === pickerSlot)].sort((a, b) => {
+        const lvDiff = b.level - a.level;
+        if (lvDiff !== 0) return lvDiff;
+        return RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity];
+      })
     : [];
 
-  const RARITY_COL: Record<string, string> = { Common: 'text-slate-400', Rare: 'text-blue-300', Epic: 'text-purple-300', Legendary: 'text-yellow-300' };
+  const hoveredItem = hoveredUid ? inventory.find((it) => it.uid === hoveredUid) ?? null : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -590,12 +600,11 @@ function EquipTab({ charId }: { charId: string }) {
                 {item ? (
                   <>
                     <div className="text-sm font-bold text-white truncate">{item.name}</div>
-                    <div className={`text-[10px] font-semibold ${RARITY_COL[item.rarity]}`}>
+                    <div className={`text-[10px] font-semibold ${EQUIP_RARITY_COL[item.rarity]}`}>
                       {item.rarity} · +{item.level}
                     </div>
                     <div className="text-[10px] text-slate-500">
                       {STAT_LABELS[item.mainStat.stat]} +{item.mainStat.value}
-                      {item.subStats.length > 0 && ` · ${item.subStats.map((s) => `${STAT_LABELS[s.stat]} +${s.value}`).join(' · ')}`}
                     </div>
                   </>
                 ) : (
@@ -626,34 +635,143 @@ function EquipTab({ charId }: { charId: string }) {
         );
       })}
 
-      {/* Item picker overlay */}
+      {/* Fullscreen item picker overlay */}
       {pickerSlot && (
-        <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800/90 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400">Choose {pickerSlot}</span>
-            <button onClick={() => setPickerSlot(null)} className="text-xs text-slate-500 hover:text-white">✕</button>
-          </div>
-          {availableForSlot.length === 0 ? (
-            <div className="py-3 text-center text-xs text-slate-600">No {pickerSlot}s in luggage</div>
-          ) : (
-            <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
-              {availableForSlot.map((it) => (
-                <button
-                  key={it.uid}
-                  onClick={() => { equipItem(charId, it.uid); setPickerSlot(null); }}
-                  className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/60 p-2 text-left transition hover:bg-slate-700/50"
-                >
-                  <span className="text-lg">{SLOT_EMOJI[it.slot]}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-xs font-bold text-white">{it.name}</div>
-                    <div className={`text-[9px] ${RARITY_COL[it.rarity]}`}>
-                      {it.rarity} +{it.level} · {STAT_LABELS[it.mainStat.stat]} +{it.mainStat.value}
+        <div
+          className="fixed inset-0 z-50 flex bg-black/85 backdrop-blur-sm"
+          onClick={() => { setPickerSlot(null); setHoveredUid(null); }}
+        >
+          <div
+            className="flex flex-1 flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-950/90 px-6 py-4">
+              <div>
+                <h3 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-white">
+                  Choose {pickerSlot.charAt(0).toUpperCase() + pickerSlot.slice(1)}
+                </h3>
+                <p className="text-[10px] text-slate-500">{availableForSlot.length} items available · Sorted by level, then rarity</p>
+              </div>
+              <button
+                onClick={() => { setPickerSlot(null); setHoveredUid(null); }}
+                className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:bg-slate-700 hover:text-white"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="flex flex-1 overflow-hidden">
+              {/* Item grid */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {availableForSlot.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="text-center text-slate-600">
+                      <div className="text-4xl mb-2">{slots.find((s) => s.key === pickerSlot)?.emoji}</div>
+                      <div className="text-sm font-semibold">No {pickerSlot}s in luggage</div>
+                      <div className="text-xs mt-1">Pull from banners to get equipment</div>
                     </div>
                   </div>
-                </button>
-              ))}
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {availableForSlot.map((it) => (
+                      <button
+                        key={it.uid}
+                        onClick={() => { equipItem(charId, it.uid); setPickerSlot(null); setHoveredUid(null); }}
+                        onMouseEnter={() => setHoveredUid(it.uid)}
+                        onMouseLeave={() => setHoveredUid(null)}
+                        className={`group flex flex-col items-center gap-2 rounded-2xl border-2 bg-gradient-to-b p-4 text-center transition-all duration-150 hover:scale-[1.04] ${EQUIP_RARITY_BORDER[it.rarity]} ${EQUIP_RARITY_BG[it.rarity]} ${hoveredUid === it.uid ? 'ring-2 ring-yellow-400/60' : ''}`}
+                      >
+                        <div className="text-3xl">{SLOT_EMOJI[it.slot]}</div>
+                        <div className="w-full truncate text-sm font-bold text-white">{it.name}</div>
+                        <div className={`text-xs font-semibold ${EQUIP_RARITY_COL[it.rarity]}`}>
+                          {it.rarity}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <span key={i} className={`text-[9px] ${i < it.level ? 'text-yellow-400' : 'text-slate-800'}`}>★</span>
+                          ))}
+                        </div>
+                        <div className="mt-1 w-full rounded-lg bg-black/30 px-2 py-1 text-[11px] text-slate-300">
+                          {STAT_LABELS[it.mainStat.stat]} <span className="font-bold text-yellow-300">+{it.mainStat.value}</span>
+                        </div>
+                        {it.subStats.length > 0 && (
+                          <div className="text-[10px] text-slate-500">
+                            +{it.subStats.length} sub stat{it.subStats.length > 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right detail panel — shows on hover */}
+              <div className="hidden w-72 flex-col border-l border-slate-800/60 bg-slate-950/70 lg:flex">
+                {hoveredItem ? (
+                  <div className="flex-1 overflow-y-auto p-5">
+                    <div className="mb-4 flex flex-col items-center gap-2">
+                      <div className="text-4xl">{SLOT_EMOJI[hoveredItem.slot]}</div>
+                      <h4
+                        style={{ fontFamily: "'Cinzel', Georgia, serif" }}
+                        className="text-base font-bold text-white text-center"
+                      >
+                        {hoveredItem.name}
+                      </h4>
+                      <div className={`text-sm font-semibold ${EQUIP_RARITY_COL[hoveredItem.rarity]}`}>
+                        {hoveredItem.rarity} · {hoveredItem.slot.charAt(0).toUpperCase() + hoveredItem.slot.slice(1)}
+                      </div>
+                      <div className="flex gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={`h-3 w-3 rotate-45 border ${i < hoveredItem.level ? 'border-yellow-400 bg-yellow-400 shadow-sm shadow-yellow-400/50' : 'border-slate-700 bg-transparent'}`}
+                          />
+                        ))}
+                        <span className="ml-1.5 text-xs text-slate-500">+{hoveredItem.level}/5</span>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-slate-800/60 mb-4" />
+
+                    {/* Main stat */}
+                    <div className="mb-4">
+                      <div className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">Main Stat</div>
+                      <div className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2">
+                        <span className="text-sm font-semibold text-white">{STAT_LABELS[hoveredItem.mainStat.stat]}</span>
+                        <span className="text-sm font-bold text-yellow-300">+{hoveredItem.mainStat.value}</span>
+                      </div>
+                    </div>
+
+                    {/* Sub stats */}
+                    <div>
+                      <div className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                        Sub Stats ({hoveredItem.subStats.length}/5)
+                      </div>
+                      {hoveredItem.subStats.length === 0 ? (
+                        <div className="text-xs text-slate-700 italic">No sub stats yet</div>
+                      ) : (
+                        hoveredItem.subStats.map((sub, i) => (
+                          <div key={i} className="flex items-center justify-between border-b border-slate-800/30 py-2 last:border-0">
+                            <span className="text-xs text-slate-400">{STAT_LABELS[sub.stat]}</span>
+                            <span className="text-xs font-semibold text-slate-200">+{sub.value}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <div className="text-center text-slate-700">
+                      <div className="text-3xl mb-2">◌</div>
+                      <div className="text-xs">Hover over an item</div>
+                      <div className="text-[10px] text-slate-800 mt-1">to see full details</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>

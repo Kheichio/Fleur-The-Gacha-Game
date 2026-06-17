@@ -1,6 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 
-type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage' | 'account';
+type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage' | 'account' | 'quests';
 
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 export default function Hub({ onNavigate }: Props) {
   const coins = useGameStore((s) => s.coins);
   const rubies = useGameStore((s) => s.rubies);
+  const shards = useGameStore((s) => s.shards) ?? 0;
   const addCoins = useGameStore((s) => s.addCoins);
   const addRubies = useGameStore((s) => s.addRubies);
 
@@ -42,6 +43,12 @@ export default function Hub({ onNavigate }: Props) {
           <span className="text-base">💎</span>
           <span className="text-sm font-bold text-red-300">{rubies}</span>
         </div>
+        {shards > 0 && (
+          <div className="flex items-center gap-2 rounded-full border border-cyan-500/40 bg-slate-900/90 px-3.5 py-1.5 shadow-lg">
+            <span className="text-base">🔷</span>
+            <span className="text-sm font-bold text-cyan-300">{shards.toLocaleString()}</span>
+          </div>
+        )}
       </div>
 
       {/* Title */}
@@ -99,15 +106,23 @@ export default function Hub({ onNavigate }: Props) {
         </button>
       </div>
 
-      {/* Luggage button — centered below grid */}
-      <div className="mt-3 w-full max-w-sm">
+      {/* Bottom row — Luggage + Quests */}
+      <div className="mt-3 grid w-full max-w-sm grid-cols-2 gap-3">
         <button
           onClick={() => onNavigate('luggage')}
-          className="group flex w-full flex-col items-center gap-2 rounded-2xl border border-orange-500/30 bg-gradient-to-b from-orange-900/50 to-slate-900/80 px-5 py-5 shadow-lg transition duration-200 hover:scale-105 hover:border-orange-400/60 hover:from-orange-800/60"
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-orange-500/30 bg-gradient-to-b from-orange-900/50 to-slate-900/80 px-5 py-5 shadow-lg transition duration-200 hover:scale-105 hover:border-orange-400/60 hover:from-orange-800/60"
         >
           <span className="text-4xl transition-transform duration-200 group-hover:scale-110">🧳</span>
           <span className="text-base font-bold text-orange-200">Luggage</span>
           <span className="text-[11px] font-normal text-orange-400/70">Items &amp; equipment</span>
+        </button>
+        <button
+          onClick={() => onNavigate('quests')}
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-violet-500/30 bg-gradient-to-b from-violet-900/50 to-slate-900/80 px-5 py-5 shadow-lg transition duration-200 hover:scale-105 hover:border-violet-400/60 hover:from-violet-800/60"
+        >
+          <span className="text-4xl transition-transform duration-200 group-hover:scale-110">📋</span>
+          <span className="text-base font-bold text-violet-200">Quests</span>
+          <span className="text-[11px] font-normal text-violet-400/70">Earn rubies</span>
         </button>
       </div>
 

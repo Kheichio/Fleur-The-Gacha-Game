@@ -7,6 +7,7 @@ import BattleScreen from './components/BattleScreen';
 import CharacterScreen from './components/CharacterScreen';
 import LuggageScreen from './components/LuggageScreen';
 import AccountScreen from './components/AccountScreen';
+import QuestsScreen from './components/QuestsScreen';
 
 type Screen =
   | 'hub'
@@ -16,6 +17,7 @@ type Screen =
   | 'characters'
   | 'luggage'
   | 'account'
+  | 'quests'
   | { battle: string; exitTo: 'hub' | 'travel' };
 
 export default function App() {
@@ -29,6 +31,7 @@ export default function App() {
       {screen === 'characters' && <CharacterScreen onBack={() => setScreen('hub')} />}
       {screen === 'luggage' && <LuggageScreen onBack={() => setScreen('hub')} />}
       {screen === 'account' && <AccountScreen onBack={() => setScreen('hub')} />}
+      {screen === 'quests' && <QuestsScreen onBack={() => setScreen('hub')} />}
       {screen === 'travel' && (
         <TravelScreen
           onBack={() => setScreen('hub')}
