@@ -4,12 +4,14 @@ import ContractScreen from './components/GachaScreen';
 import PartyScreen from './components/RosterScreen';
 import TravelScreen from './components/TravelScreen';
 import BattleScreen from './components/BattleScreen';
+import CharacterScreen from './components/CharacterScreen';
 
 type Screen =
   | 'hub'
   | 'contract'
   | 'party'
   | 'travel'
+  | 'characters'
   | { battle: string; exitTo: 'hub' | 'travel' };
 
 export default function App() {
@@ -20,6 +22,7 @@ export default function App() {
       {screen === 'hub' && <Hub onNavigate={(s) => setScreen(s)} />}
       {screen === 'contract' && <ContractScreen onBack={() => setScreen('hub')} />}
       {screen === 'party' && <PartyScreen onBack={() => setScreen('hub')} />}
+      {screen === 'characters' && <CharacterScreen onBack={() => setScreen('hub')} />}
       {screen === 'travel' && (
         <TravelScreen
           onBack={() => setScreen('hub')}

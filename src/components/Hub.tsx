@@ -1,6 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 
-type NavScreen = 'contract' | 'party' | 'travel';
+type NavScreen = 'contract' | 'party' | 'travel' | 'characters';
 
 interface Props {
   onNavigate: (screen: NavScreen) => void;
@@ -25,7 +25,7 @@ export default function Hub({ onNavigate }: Props) {
       </div>
 
       {/* Title */}
-      <div className="title-float mt-20 mb-16 flex flex-col items-center select-none">
+      <div className="title-float mt-20 mb-12 flex flex-col items-center select-none">
         <div className="text-[10px] font-semibold tracking-[0.5em] text-slate-500 uppercase mb-2">
           ✦ &nbsp; ✦ &nbsp; ✦
         </div>
@@ -40,11 +40,11 @@ export default function Hub({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Nav buttons */}
-      <div className="flex w-full max-w-md flex-col gap-3 sm:flex-row">
+      {/* Nav buttons — 2×2 grid */}
+      <div className="grid w-full max-w-sm grid-cols-2 gap-3">
         <button
           onClick={() => onNavigate('contract')}
-          className="group flex flex-1 flex-col items-center gap-2 rounded-2xl border border-purple-500/30 bg-gradient-to-b from-purple-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-purple-400/60 hover:from-purple-800/60"
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-purple-500/30 bg-gradient-to-b from-purple-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-purple-400/60 hover:from-purple-800/60"
         >
           <span className="text-4xl transition-transform duration-200 group-hover:scale-110">📜</span>
           <span className="text-base font-bold text-purple-200">Contract</span>
@@ -52,17 +52,26 @@ export default function Hub({ onNavigate }: Props) {
         </button>
 
         <button
+          onClick={() => onNavigate('characters')}
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-cyan-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-cyan-400/60 hover:from-cyan-800/60"
+        >
+          <span className="text-4xl transition-transform duration-200 group-hover:scale-110">✦</span>
+          <span className="text-base font-bold text-cyan-200">Characters</span>
+          <span className="text-[11px] font-normal text-cyan-400/70">Upgrade &amp; manage</span>
+        </button>
+
+        <button
           onClick={() => onNavigate('party')}
-          className="group flex flex-1 flex-col items-center gap-2 rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-emerald-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-emerald-400/60 hover:from-emerald-800/60"
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-emerald-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-emerald-400/60 hover:from-emerald-800/60"
         >
           <span className="text-4xl transition-transform duration-200 group-hover:scale-110">⚔️</span>
           <span className="text-base font-bold text-emerald-200">Party</span>
-          <span className="text-[11px] font-normal text-emerald-400/70">Manage your team</span>
+          <span className="text-[11px] font-normal text-emerald-400/70">Compose your team</span>
         </button>
 
         <button
           onClick={() => onNavigate('travel')}
-          className="group flex flex-1 flex-col items-center gap-2 rounded-2xl border border-amber-600/30 bg-gradient-to-b from-amber-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-amber-500/60 hover:from-amber-800/60"
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-amber-600/30 bg-gradient-to-b from-amber-900/50 to-slate-900/80 px-5 py-6 shadow-lg transition duration-200 hover:scale-105 hover:border-amber-500/60 hover:from-amber-800/60"
         >
           <span className="text-4xl transition-transform duration-200 group-hover:scale-110">🗺️</span>
           <span className="text-base font-bold text-amber-200">Travel</span>

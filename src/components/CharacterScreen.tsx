@@ -1,0 +1,564 @@
+import { useState } from 'react';
+import { useGameStore } from '../store/gameStore';
+import { CHARACTER_POOL } from '../data/characters';
+import { effectiveStats, xpProgress, MAX_LEVEL, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
+import type { Character, Stats } from '../types';
+import CurrencyBar from './CurrencyBar';
+
+interface Props {
+  onBack: () => void;
+}
+
+type TabId = 'overview' | 'enhance' | 'train' | 'equip';
+type ProgData = { level: number; current: number; needed: number };
+
+const NAV_TABS: { id: TabId; symbol: string; label: string }[] = [
+  { id: 'overview', symbol: '◎', label: 'Info' },
+  { id: 'enhance', symbol: '◆', label: 'Forge' },
+  { id: 'train',   symbol: '◈', label: 'Train' },
+  { id: 'equip',   symbol: '⬡', label: 'Equip' },
+];
+
+const RARITY_TEXT: Record<string, string> = {
+  Common:    'text-slate-400',
+  Rare:      'text-blue-300',
+  Epic:      'text-purple-300',
+  Legendary: 'text-yellow-300',
+};
+
+const RARITY_BORDER: Record<string, string> = {
+  Common:    'border-slate-500/50',
+  Rare:      'border-blue-500/60',
+  Epic:      'border-purple-500/70',
+  Legendary: 'border-yellow-500/80',
+};
+
+const RARITY_SYMBOL: Record<string, string> = {
+  Common:    '◇',
+  Rare:      '◆',
+  Epic:      '✦',
+  Legendary: '✸',
+};
+
+const ART_STYLE: Record<string, { bg: string; glow: string }> = {
+  Common:    { bg: '#111520', glow: 'rgba(100,116,139,0.12)' },
+  Rare:      { bg: '#0a1225', glow: 'rgba(59,130,246,0.18)'  },
+  Epic:      { bg: '#0f0820', glow: 'rgba(147,51,234,0.20)'  },
+  Legendary: { bg: '#1a1000', glow: 'rgba(234,179,8,0.18)'   },
+};
+
+function getClass(char: Character): string {
+  if (char.skill.type === 'magic') return char.stats.hp > 150 ? 'Battle Mage' : 'Mage';
+  if (char.stats.speed > 15) return 'Assassin';
+  if (char.stats.def > 13)   return 'Guardian';
+  if (char.stats.atk > 30)   return 'Warrior';
+  return 'Fighter';
+}
+
+export default function CharacterScreen({ onBack }: Props) {
+  const ownedCounts  = useGameStore((s) => s.ownedCounts);
+  const characterData = useGameStore((s) => s.characterData);
+  const coins        = useGameStore((s) => s.coins);
+  const enhance      = useGameStore((s) => s.enhance);
+  const buyXp        = useGameStore((s) => s.buyXp);
+
+  const owned = CHARACTER_POOL.filter((c) => ownedCounts[c.id] > 0);
+
+  const [selectedCharId, setSelectedCharId] = useState<string | null>(owned[0]?.id ?? null);
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
+
+  const char   = selectedCharId ? CHARACTER_POOL.find((c) => c.id === selectedCharId) ?? null : null;
+  const data   = selectedCharId ? (characterData[selectedCharId] ?? { level: 1, xp: 0, enhancement: 0 }) : null;
+  const count  = selectedCharId ? (ownedCounts[selectedCharId] ?? 0) : 0;
+  const scaled = char && data ? effectiveStats(char.stats, data.level, data.enhancement) : null;
+  const prog   = data ? xpProgress(data.xp) : null;
+  const xpBarPct = prog && prog.needed > 0 ? Math.min(100, Math.round((prog.current / prog.needed) * 100)) : 100;
+
+  const canEnhance = count >= 2 && data !== null && data.enhancement < 5;
+  const canTrain   = coins >= TRAIN_COST && data !== null && data.level < MAX_LEVEL;
+
+  const artStyle = char ? ART_STYLE[char.rarity] : ART_STYLE.Common;
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#070d1a] text-slate-100">
+
+      {/* ── Far-left nav icons ── */}
+      <nav className="flex w-14 flex-col items-center border-r border-slate-800/50 bg-slate-950/70 py-4">
+        <button
+          onClick={onBack}
+          className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-800/60 hover:text-slate-300"
+          title="Back to Hub"
+        >
+          ←
+        </button>
+        <div className="mb-3 h-px w-8 bg-slate-800/80" />
+        {NAV_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            title={tab.label}
+            className={`mb-1 flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-xl transition ${
+              activeTab === tab.id
+                ? 'border border-yellow-700/40 bg-yellow-950/50 text-yellow-400'
+                : 'text-slate-600 hover:bg-slate-800/40 hover:text-slate-300'
+            }`}
+          >
+            <span className="text-lg leading-none">{tab.symbol}</span>
+            <span className="text-[8px] font-semibold uppercase tracking-wider">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* ── Info panel ── */}
+      <div className="flex w-72 flex-col overflow-hidden border-r border-slate-800/50 bg-slate-950/40">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-800/50 px-4 py-3">
+          <span
+            style={{ fontFamily: "'Cinzel', Georgia, serif" }}
+            className="text-xs font-bold uppercase tracking-wider text-slate-600"
+          >
+            Characters
+          </span>
+          <CurrencyBar />
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {!char || !data || !scaled || !prog ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-700">
+              <span className="text-5xl">◌</span>
+              <div className="text-sm font-semibold">No Characters</div>
+              <div className="max-w-[180px] text-center text-xs leading-relaxed">
+                Use the Contract to summon your first character.
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Character header (always shown) */}
+              <div className="mb-5">
+                <div className="mb-2 flex items-start gap-2.5">
+                  <span className={`mt-0.5 text-2xl leading-none ${RARITY_TEXT[char.rarity]}`}>
+                    {RARITY_SYMBOL[char.rarity]}
+                  </span>
+                  <div className="min-w-0">
+                    <h2
+                      style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }}
+                      className="text-base font-black leading-tight text-white"
+                    >
+                      {char.name}
+                    </h2>
+                    <div className={`text-xs font-semibold ${RARITY_TEXT[char.rarity]}`}>
+                      {char.rarity} · {getClass(char)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhancement diamonds */}
+                <div className="mt-3 flex items-center gap-1.5">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-3.5 w-3.5 rotate-45 border-2 transition-all ${
+                        i < data.enhancement
+                          ? 'border-yellow-400 bg-yellow-400 shadow-sm shadow-yellow-400/50'
+                          : 'border-slate-700 bg-transparent'
+                      }`}
+                    />
+                  ))}
+                  <span className="ml-1 text-[10px] text-slate-600">{data.enhancement}/5</span>
+                </div>
+
+                {/* Level */}
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-sm font-bold text-slate-400">Lv.</span>
+                  <span className="text-3xl font-black text-white leading-none">{data.level}</span>
+                  <span className="text-sm text-slate-700">/{MAX_LEVEL}</span>
+                </div>
+              </div>
+
+              <div className="mb-5 h-px bg-slate-800/60" />
+
+              {/* Tab content */}
+              {activeTab === 'overview' && (
+                <OverviewTab
+                  char={char}
+                  scaled={scaled}
+                  prog={prog}
+                  xpBarPct={xpBarPct}
+                  canTrain={canTrain}
+                  onTrain={() => buyXp(char.id)}
+                />
+              )}
+              {activeTab === 'enhance' && (
+                <EnhanceTab
+                  data={data}
+                  count={count}
+                  canEnhance={canEnhance}
+                  onEnhance={() => enhance(char.id)}
+                />
+              )}
+              {activeTab === 'train' && (
+                <TrainTab
+                  data={data}
+                  prog={prog}
+                  xpBarPct={xpBarPct}
+                  canTrain={canTrain}
+                  onTrain={() => buyXp(char.id)}
+                  coins={coins}
+                />
+              )}
+              {activeTab === 'equip' && <EquipTab />}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Art display area ── */}
+      <div
+        className="relative flex-1 overflow-hidden"
+        style={{
+          background: `radial-gradient(ellipse at 50% 60%, ${artStyle.glow} 0%, ${artStyle.bg} 55%, #070d1a 100%)`,
+        }}
+      >
+        {char && (
+          <>
+            {/* Faint rarity watermark */}
+            <div className={`absolute left-5 top-5 z-10 text-[10px] font-black uppercase tracking-[0.5em] opacity-15 ${RARITY_TEXT[char.rarity]}`}>
+              {char.rarity}
+            </div>
+
+            {/* Character art */}
+            <div className="absolute inset-0 flex items-end justify-center">
+              {char.image ? (
+                <img
+                  src={char.image}
+                  alt={char.name}
+                  className="h-full max-w-full object-contain object-bottom"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <span className="select-none font-black leading-none text-white opacity-[0.03]" style={{ fontSize: '35vw' }}>
+                    {char.name.charAt(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom fade */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#070d1a] to-transparent" />
+
+            {/* Bottom name strip */}
+            <div className="absolute inset-x-0 bottom-0 px-5 py-4">
+              <div
+                style={{ fontFamily: "'Cinzel Decorative', Georgia, serif" }}
+                className="text-lg font-black text-white/20"
+              >
+                {char.name}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Right sidebar: character list ── */}
+      <aside className="flex w-24 flex-col overflow-y-auto border-l border-slate-800/50 bg-slate-950/50">
+        <div className="sticky top-0 border-b border-slate-800/50 bg-slate-950/80 px-2 py-2 text-center">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-700">Owned</span>
+        </div>
+
+        {owned.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center px-2">
+            <span className="text-center text-[9px] text-slate-700">None yet</span>
+          </div>
+        ) : (
+          owned.map((c) => {
+            const d = characterData[c.id] ?? { level: 1, xp: 0, enhancement: 0 };
+            const isSelected = c.id === selectedCharId;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setSelectedCharId(c.id)}
+                className={`flex w-full flex-col items-center gap-1 border-b border-slate-800/30 px-1 py-3 transition ${
+                  isSelected ? 'bg-yellow-950/25' : 'hover:bg-slate-800/40'
+                }`}
+              >
+                <div className={`h-14 w-14 overflow-hidden rounded-xl border-2 bg-slate-800 ${
+                  isSelected ? 'border-yellow-500/60' : RARITY_BORDER[c.rarity]
+                }`}>
+                  {c.image ? (
+                    <img src={c.image} alt={c.name} className="h-full w-full object-cover object-top"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/characters/placeholder.svg'; }} />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xl font-black text-slate-400">
+                      {c.name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div className="max-w-full truncate text-center text-[9px] font-semibold text-slate-300">
+                  {c.name.split(' ')[0]}
+                </div>
+                <div className={`text-[8px] font-semibold ${RARITY_TEXT[c.rarity]}`}>Lv.{d.level}</div>
+                {isSelected && (
+                  <div className="h-0.5 w-10 rounded-full bg-yellow-500/50" />
+                )}
+              </button>
+            );
+          })
+        )}
+      </aside>
+    </div>
+  );
+}
+
+// ── Tab sub-components ─────────────────────────────────────────────────────────
+
+function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
+  char: Character;
+  scaled: Stats;
+  prog: ProgData;
+  xpBarPct: number;
+  canTrain: boolean;
+  onTrain: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Stats list */}
+      <div>
+        <div
+          style={{ fontFamily: "'Cinzel', Georgia, serif" }}
+          className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600"
+        >
+          Stats
+        </div>
+        {([
+          { icon: '❤️', label: 'HP',  value: scaled.hp    },
+          { icon: '⚔️', label: 'ATK', value: scaled.atk   },
+          { icon: '🛡️', label: 'DEF', value: scaled.def   },
+          { icon: '💨', label: 'SPD', value: scaled.speed },
+        ] as const).map(({ icon, label, value }) => (
+          <div key={label} className="flex items-center justify-between border-b border-slate-800/40 py-2.5 last:border-0">
+            <div className="flex items-center gap-2 text-slate-400">
+              <span className="w-5 text-center text-sm">{icon}</span>
+              <span className="text-sm">{label}</span>
+            </div>
+            <span className="text-sm font-bold text-slate-100">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Skill */}
+      <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-3">
+        <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Signature Skill</div>
+        <div className="text-sm font-bold text-white">{char.skill.name}</div>
+        <div className="mt-0.5 text-[10px] text-slate-500">
+          {char.skill.type === 'magic' ? '✨ Magic' : '⚔️ Melee'}
+          {' · '}{char.skill.multiplier}× damage
+          {' · '}{char.skill.cooldown}-turn CD
+        </div>
+      </div>
+
+      {/* Description */}
+      {char.description && (
+        <p style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-[11px] italic leading-relaxed text-slate-500">
+          {char.description}
+        </p>
+      )}
+
+      {/* Quick Train */}
+      <div>
+        <div className="mb-1 flex justify-between text-[10px] text-slate-600">
+          <span>XP Progress</span>
+          {prog.needed > 0 && <span>{prog.current}/{prog.needed}</span>}
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${xpBarPct}%` }} />
+        </div>
+        <button
+          disabled={!canTrain}
+          onClick={onTrain}
+          className="mt-3 w-full rounded-xl border border-blue-700/40 bg-blue-950/40 py-2.5 text-xs font-bold text-blue-300 transition hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ◈ Train (+{TRAIN_XP} XP) — {TRAIN_COST.toLocaleString()} 🪙
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EnhanceTab({ data, count, canEnhance, onEnhance }: {
+  data: { level: number; xp: number; enhancement: number };
+  count: number;
+  canEnhance: boolean;
+  onEnhance: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Visual diamonds */}
+      <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-4">
+        <div className="mb-3 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Enhancement Level</div>
+        <div className="flex items-center justify-center gap-3">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 text-lg transition-all ${
+                i < data.enhancement
+                  ? 'border-yellow-500 bg-yellow-950/60 text-yellow-400 shadow-md shadow-yellow-500/25'
+                  : 'border-slate-700 bg-slate-800/30 text-slate-700'
+              }`}
+            >
+              {i < data.enhancement ? '◆' : '◇'}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-center text-xs text-slate-500">
+          Level {data.enhancement}/5 · +{data.enhancement * 12}% to all stats
+        </div>
+      </div>
+
+      {/* Effect table */}
+      <div>
+        <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Enhancement Effects</div>
+        {[1, 2, 3, 4, 5].map((lv) => (
+          <div
+            key={lv}
+            className={`flex items-center justify-between border-b border-slate-800/30 py-2 text-xs last:border-0 ${
+              lv <= data.enhancement ? 'text-yellow-300' : 'text-slate-600'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span>{lv <= data.enhancement ? '◆' : '◇'}</span>
+              <span>Level {lv}</span>
+            </div>
+            <span>+{lv * 12}% all stats</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Enhance action */}
+      <div>
+        <div className="mb-2 text-xs text-slate-500">
+          Copies owned:{' '}
+          <span className={count >= 2 ? 'font-bold text-yellow-400' : 'text-slate-400'}>{count}×</span>
+          {count >= 2 && <span className="ml-2 text-slate-600">(1 consumed on enhance)</span>}
+        </div>
+        <button
+          disabled={!canEnhance}
+          onClick={onEnhance}
+          className="w-full rounded-xl border border-yellow-700/40 bg-yellow-950/40 py-3 text-sm font-bold text-yellow-300 transition hover:bg-yellow-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {data.enhancement >= 5
+            ? '◆◆◆◆◆ Max Enhanced'
+            : canEnhance
+              ? `Enhance ◆ — ${count - 1} copies remain`
+              : 'Need a duplicate copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TrainTab({ data, prog, xpBarPct, canTrain, onTrain, coins }: {
+  data: { level: number; xp: number; enhancement: number };
+  prog: ProgData;
+  xpBarPct: number;
+  canTrain: boolean;
+  onTrain: () => void;
+  coins: number;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Level status */}
+      <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-4">
+        <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Level Progress</div>
+        <div className="mb-3 flex items-end gap-1">
+          <span className="text-3xl font-black leading-none text-white">{data.level}</span>
+          <span className="mb-0.5 text-slate-600">/ {MAX_LEVEL}</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all"
+            style={{ width: `${xpBarPct}%` }}
+          />
+        </div>
+        {data.level < MAX_LEVEL && prog.needed > 0 && (
+          <div className="mt-1.5 flex justify-between text-[10px] text-slate-600">
+            <span>{prog.current} XP</span>
+            <span>{prog.needed} XP to next level</span>
+          </div>
+        )}
+        {data.level >= MAX_LEVEL && (
+          <div className="mt-1.5 text-center text-[10px] font-bold text-yellow-400">Max Level Reached</div>
+        )}
+      </div>
+
+      {/* Training session */}
+      <div className="rounded-xl border border-slate-800/50 bg-slate-900/40 p-4">
+        <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Training Session</div>
+        <div className="mb-3 space-y-1.5 text-xs">
+          <div className="flex justify-between">
+            <span className="text-slate-500">XP gained</span>
+            <span className="font-semibold text-blue-400">+{TRAIN_XP} XP</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Cost</span>
+            <span className="font-semibold text-yellow-400">{TRAIN_COST.toLocaleString()} 🪙</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Your balance</span>
+            <span className={`font-semibold ${coins >= TRAIN_COST ? 'text-slate-300' : 'text-red-400'}`}>
+              {coins.toLocaleString()} 🪙
+            </span>
+          </div>
+        </div>
+        <button
+          disabled={!canTrain}
+          onClick={onTrain}
+          className="w-full rounded-xl border border-blue-700/40 bg-blue-950/40 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {data.level >= MAX_LEVEL
+            ? 'Max Level'
+            : !canTrain
+              ? `Need ${TRAIN_COST.toLocaleString()} 🪙`
+              : `Train (+${TRAIN_XP} XP)`}
+        </button>
+      </div>
+
+      <p className="text-[10px] italic leading-relaxed text-slate-700">
+        Characters also gain XP from battles — half the stage's gold reward is shared among all active party members.
+      </p>
+    </div>
+  );
+}
+
+function EquipTab() {
+  return (
+    <div className="flex flex-col gap-3">
+      <div
+        style={{ fontFamily: "'Cinzel', Georgia, serif" }}
+        className="mb-1 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600"
+      >
+        Equipment Slots
+      </div>
+      {[
+        { emoji: '⚔️', label: 'Weapon',    desc: 'Increases ATK' },
+        { emoji: '🛡️', label: 'Armour',    desc: 'Increases DEF' },
+        { emoji: '💍', label: 'Accessory', desc: 'Special effects' },
+      ].map(({ emoji, label, desc }) => (
+        <div
+          key={label}
+          className="flex items-center gap-3 rounded-xl border border-slate-800/50 bg-slate-900/40 p-3"
+        >
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-slate-700/50 bg-slate-800/60 text-2xl opacity-30">
+            {emoji}
+          </div>
+          <div>
+            <div className="text-sm font-bold text-slate-400">{label}</div>
+            <div className="text-[10px] text-slate-600">{desc}</div>
+            <div className="mt-0.5 text-[9px] italic text-slate-700">— Empty · Coming Soon</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
