@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { BannerType, Character, CharacterSaveData, EquipmentItem, PullResult } from '../types';
 import { STAGES } from '../data/stages';
-import { ADVENTURE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, DUPLICATE_REFUND, PITY_THRESHOLD, STANDARD_PULL_COST, pullOne } from '../systems/gacha';
+import { ADVENTURE_PULL_COST, ARCHIVE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, DUPLICATE_REFUND, PITY_THRESHOLD, STANDARD_PULL_COST, pullOne } from '../systems/gacha';
 import { levelFromXp, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
 import { upgradeItem, UPGRADE_COSTS } from '../data/equipment';
 
@@ -63,7 +63,7 @@ interface GameState {
   wipeData: () => void;
 }
 
-const DEFAULT_PITY: Record<BannerType, number> = { standard: 0, adventure: 0, demon: 0, beyond: 0 };
+const DEFAULT_PITY: Record<BannerType, number> = { standard: 0, adventure: 0, demon: 0, beyond: 0, archive: 0 };
 const DEFAULT_STATS: PlayerStats = { totalPulls: 0, coinsSpent: 0, rubiesSpent: 0, monstersDefeated: 0, teammatesPerished: 0, itemsObtained: 0 };
 const DEFAULT_PROFILE: PlayerProfile = { name: '', pfp: 'default', favouriteCharId: '' };
 
@@ -107,7 +107,7 @@ export const useGameStore = create<GameState>()(
           coinsDelta = -cost;
           stats.coinsSpent += cost;
         } else {
-          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : ADVENTURE_PULL_COST;
+          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : banner === 'archive' ? ARCHIVE_PULL_COST : ADVENTURE_PULL_COST;
           const cost = rubyCost * count;
           if (state.rubies < cost) return;
           stats.rubiesSpent += cost;
@@ -144,7 +144,7 @@ export const useGameStore = create<GameState>()(
           const cost = STANDARD_PULL_COST * count;
           set({ coins: state.coins + coinsDelta, shards: (state.shards ?? 0) + shardsGained, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: 'standard', pityCounters: pity, playerStats: stats });
         } else {
-          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : ADVENTURE_PULL_COST;
+          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : banner === 'beyond' ? BEYOND_PULL_COST : banner === 'archive' ? ARCHIVE_PULL_COST : ADVENTURE_PULL_COST;
           const cost = rubyCost * count;
           set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, shards: (state.shards ?? 0) + shardsGained, ownedCounts: newCounts, inventory: newInventory, lastPullResults: results, lastPullBanner: banner, pityCounters: pity, playerStats: stats });
         }

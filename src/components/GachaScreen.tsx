@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
-import { ADVENTURE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, STANDARD_PULL_COST, PITY_THRESHOLD } from '../systems/gacha';
+import { ADVENTURE_PULL_COST, ARCHIVE_PULL_COST, BEYOND_PULL_COST, DEMON_PULL_COST, STANDARD_PULL_COST, PITY_THRESHOLD } from '../systems/gacha';
 import { SLOT_EMOJI, STAT_LABELS } from '../data/equipment';
 import { playLegendaryReveal } from '../systems/audio';
 import type { BannerType, Character, EquipmentItem, PullResult, Rarity } from '../types';
@@ -61,7 +61,7 @@ const BANNER_CONFIGS: BannerConfig[] = [
     currencyLabel: 'Rubies',
     costPer: ADVENTURE_PULL_COST,
     ratesText: 'Common 51%  ·  Rare 35%  ·  Epic 13.5%  ·  Legendary 0.5%',
-    featuredIds: ['fleur-theos', 'auxentios-brigach', 'roza-defteros', 'casilda'],
+    featuredIds: ['auxentios-brigach', 'roza-defteros', 'casilda'],
     decorSymbol: '◆',
   },
   {
@@ -98,6 +98,23 @@ const BANNER_CONFIGS: BannerConfig[] = [
     featuredIds: ['anwaltin-von-berater'],
     decorSymbol: '◉',
   },
+  {
+    id: 'archive',
+    name: "Fleur's Archive",
+    subtitle: 'The Demi-God Awakens',
+    tag: 'LIMITED',
+    tagBg: 'bg-amber-700/90',
+    bgGradient: 'linear-gradient(160deg, #1a1508 0%, #0d0a04 50%, #1a1208 100%)',
+    glowColor: 'rgba(234, 179, 8, 0.20)',
+    accentColor: 'text-amber-300',
+    titleColor: 'text-amber-100',
+    currencyIcon: '💎',
+    currencyLabel: 'Rubies',
+    costPer: ARCHIVE_PULL_COST,
+    ratesText: 'Common 46.5%  ·  Rare 34%  ·  Epic 19%  ·  Legendary 0.5%',
+    featuredIds: ['fleur-theos'],
+    decorSymbol: '✸',
+  },
 ];
 
 const RARITY_CARD: Record<Rarity, { border: string; from: string; to: string; glow: string; text: string }> = {
@@ -113,7 +130,7 @@ export default function GachaScreen({ onBack }: Props) {
   const coins  = useGameStore((s) => s.coins);
   const rubies = useGameStore((s) => s.rubies);
   const pull   = useGameStore((s) => s.pull);
-  const pityCounters = useGameStore((s) => s.pityCounters) ?? { standard: 0, adventure: 0, demon: 0, beyond: 0 };
+  const pityCounters = useGameStore((s) => s.pityCounters) ?? { standard: 0, adventure: 0, demon: 0, beyond: 0, archive: 0 };
 
   const [bannerIdx, setBannerIdx]       = useState(0);
   const [pullResults, setPullResults]   = useState<PullResult[]>([]);

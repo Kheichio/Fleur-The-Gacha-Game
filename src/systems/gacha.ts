@@ -6,6 +6,7 @@ export const STANDARD_PULL_COST  = 100;
 export const ADVENTURE_PULL_COST = 1;
 export const DEMON_PULL_COST     = 1;
 export const BEYOND_PULL_COST    = 1;
+export const ARCHIVE_PULL_COST   = 1;
 export const DUPLICATE_REFUND    = 30;
 export const PITY_THRESHOLD      = 100;
 export const ITEM_DROP_RATE      = 0.25;
@@ -15,18 +16,21 @@ const BANNER_RATES: Record<BannerType, Record<Rarity, number>> = {
   adventure: { Common: 51,   Rare: 35,   Epic: 13.5, Legendary: 0.5 },
   demon:     { Common: 46.5, Rare: 34,   Epic: 19,   Legendary: 0.5 },
   beyond:    { Common: 46.5, Rare: 34,   Epic: 19,   Legendary: 0.5 },
+  archive:   { Common: 46.5, Rare: 34,   Epic: 19,   Legendary: 0.5 },
 };
 
 const ALL_STORY_IDS   = ['auxentios-brigach', 'roza-defteros', 'casilda', 'fleur-theos', 'tomoe-yoshimi', 'anwaltin-von-berater'];
-const ADVENTURE_FEAT  = ['fleur-theos', 'auxentios-brigach', 'roza-defteros', 'casilda'];
+const ADVENTURE_FEAT  = ['auxentios-brigach', 'roza-defteros', 'casilda'];
 const DEMON_FEAT      = ['tomoe-yoshimi'];
 const BEYOND_FEAT     = ['anwaltin-von-berater'];
+const ARCHIVE_FEAT    = ['fleur-theos'];
 
 const BANNER_FEATURED: Record<BannerType, string[]> = {
   standard:  [],
   adventure: ADVENTURE_FEAT,
   demon:     DEMON_FEAT,
   beyond:    BEYOND_FEAT,
+  archive:   ARCHIVE_FEAT,
 };
 
 function getBannerPool(banner: BannerType): Character[] {
@@ -34,13 +38,17 @@ function getBannerPool(banner: BannerType): Character[] {
     return CHARACTER_POOL.filter((c) => !ALL_STORY_IDS.includes(c.id));
   }
   if (banner === 'adventure') {
-    return CHARACTER_POOL.filter((c) => !DEMON_FEAT.includes(c.id) && !BEYOND_FEAT.includes(c.id));
+    // All except Tomoe, Anwältin, and Fleur (she moved to Archive)
+    return CHARACTER_POOL.filter((c) => !DEMON_FEAT.includes(c.id) && !BEYOND_FEAT.includes(c.id) && !ARCHIVE_FEAT.includes(c.id));
   }
   if (banner === 'demon') {
     return CHARACTER_POOL.filter((c) => DEMON_FEAT.includes(c.id) || !ALL_STORY_IDS.includes(c.id));
   }
-  // beyond: Anwältin + non-story characters
-  return CHARACTER_POOL.filter((c) => BEYOND_FEAT.includes(c.id) || !ALL_STORY_IDS.includes(c.id));
+  if (banner === 'beyond') {
+    return CHARACTER_POOL.filter((c) => BEYOND_FEAT.includes(c.id) || !ALL_STORY_IDS.includes(c.id));
+  }
+  // archive: Fleur + non-story characters
+  return CHARACTER_POOL.filter((c) => ARCHIVE_FEAT.includes(c.id) || !ALL_STORY_IDS.includes(c.id));
 }
 
 function pickRarity(weights: Record<Rarity, number>): Rarity {

@@ -78,7 +78,7 @@ export const CHARACTER_POOL: Character[] = [
   {
     id: 'auxentios-brigach',
     name: 'Auxentios Brígach',
-    rarity: 'Rare',
+    rarity: 'Epic',
     stats: { hp: 140, physAtk: 28, magAtk: 6, physDef: 18, magDef: 12, critRate: 8, speed: 11 },
     skill: { name: "Brígach's Strike", multiplier: 2.0, cooldown: 3, type: 'melee' },
     image: '/images/characters/auxentios.png',
@@ -104,7 +104,7 @@ export const CHARACTER_POOL: Character[] = [
   {
     id: 'tomoe-yoshimi',
     name: 'Tomoe Yoshimi',
-    rarity: 'Epic',
+    rarity: 'Legendary',
     stats: { hp: 115, physAtk: 38, magAtk: 8, physDef: 10, magDef: 8, critRate: 22, speed: 19 },
     skill: { name: 'Demon Gale Strike', multiplier: 2.5, cooldown: 3, type: 'melee' },
     image: '/images/characters/tomoe-yoshimi.png',
@@ -113,7 +113,7 @@ export const CHARACTER_POOL: Character[] = [
   {
     id: 'roza-defteros',
     name: 'Róza Défteros',
-    rarity: 'Epic',
+    rarity: 'Legendary',
     stats: { hp: 105, physAtk: 10, magAtk: 40, physDef: 8, magDef: 14, critRate: 16, speed: 16 },
     skill: { name: 'Lustra Borealis', multiplier: 2.7, cooldown: 3, type: 'magic' },
     image: '/images/characters/roza.png',

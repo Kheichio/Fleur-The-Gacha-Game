@@ -1,5 +1,5 @@
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
-export type BannerType = 'standard' | 'adventure' | 'demon' | 'beyond';
+export type BannerType = 'standard' | 'adventure' | 'demon' | 'beyond' | 'archive';
 export type StatKey = 'hp' | 'physAtk' | 'magAtk' | 'physDef' | 'magDef' | 'critRate' | 'speed';
 
 export interface Skill {
