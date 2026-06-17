@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { BannerType, Character, CharacterSaveData } from '../types';
 import { STAGES } from '../data/stages';
-import { ADVENTURE_PULL_COST, DUPLICATE_REFUND, STANDARD_PULL_COST, pullOne } from '../systems/gacha';
+import { ADVENTURE_PULL_COST, DEMON_PULL_COST, DUPLICATE_REFUND, STANDARD_PULL_COST, pullOne } from '../systems/gacha';
 import { levelFromXp, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
 
 interface GameState {
@@ -59,18 +59,19 @@ export const useGameStore = create<GameState>()(
           }
           set({ coins: state.coins + delta, ownedCounts: newCounts, lastPullResults: results, lastPullBanner: 'standard' });
         } else {
-          const cost = ADVENTURE_PULL_COST * count;
+          const rubyCost = banner === 'demon' ? DEMON_PULL_COST : ADVENTURE_PULL_COST;
+          const cost = rubyCost * count;
           if (state.rubies < cost) return;
           const results: Character[] = [];
           let coinsDelta = 0;
           const newCounts = { ...state.ownedCounts };
           for (let i = 0; i < count; i++) {
-            const c = pullOne('adventure');
+            const c = pullOne(banner);
             results.push(c);
             if (newCounts[c.id]) coinsDelta += DUPLICATE_REFUND;
             newCounts[c.id] = (newCounts[c.id] ?? 0) + 1;
           }
-          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, lastPullResults: results, lastPullBanner: 'adventure' });
+          set({ rubies: state.rubies - cost, coins: state.coins + coinsDelta, ownedCounts: newCounts, lastPullResults: results, lastPullBanner: banner });
         }
       },
 

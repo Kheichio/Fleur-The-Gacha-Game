@@ -34,9 +34,12 @@ export function effectiveStats(base: Stats, level: number, enhancement: number):
   const enh = Math.max(0, Math.min(5, enhancement));
   const mult = 1 + (lv - 1) * 0.06 + enh * 0.12;
   return {
-    hp: Math.round(base.hp * mult),
-    atk: Math.round(base.atk * mult),
-    def: Math.round(base.def * mult),
-    speed: base.speed + Math.floor(lv / 10),
+    hp:       Math.round(base.hp      * mult),
+    physAtk:  Math.round(base.physAtk * mult),
+    magAtk:   Math.round(base.magAtk  * mult),
+    physDef:  Math.round(base.physDef  * mult),
+    magDef:   Math.round(base.magDef   * mult),
+    critRate: Math.min(75, Math.round(base.critRate + (lv - 1) * 0.2)),
+    speed:    base.speed + Math.floor(lv / 10),
   };
 }

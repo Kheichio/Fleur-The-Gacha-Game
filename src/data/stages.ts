@@ -1,11 +1,11 @@
 import type { Character, Stage } from '../types';
 
-function enemy(id: string, name: string, hp: number, atk: number, def: number, speed: number): Character {
+function enemy(id: string, name: string, hp: number, physAtk: number, physDef: number, speed: number): Character {
   return {
     id,
     name,
     rarity: 'Common',
-    stats: { hp, atk, def, speed },
+    stats: { hp, physAtk, magAtk: 4, physDef, magDef: 4, critRate: 0, speed },
     skill: { name: 'Wild Strike', multiplier: 1.6, cooldown: 3 },
   };
 }

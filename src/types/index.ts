@@ -1,5 +1,5 @@
 export type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
-export type BannerType = 'standard' | 'adventure';
+export type BannerType = 'standard' | 'adventure' | 'demon';
 
 export interface Skill {
   name: string;
@@ -10,8 +10,11 @@ export interface Skill {
 
 export interface Stats {
   hp: number;
-  atk: number;
-  def: number;
+  physAtk: number;
+  magAtk: number;
+  physDef: number;
+  magDef: number;
+  critRate: number;
   speed: number;
 }
 

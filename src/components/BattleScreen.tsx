@@ -99,7 +99,8 @@ export default function BattleScreen({ stageId, onExit }: Props) {
     const useSkill = type === 'skill' && actor.skillCooldownRemaining === 0;
     const skillType = actor.character.skill.type ?? 'melee';
     const multiplier = useSkill ? actor.character.skill.multiplier : 1;
-    const damage = calcDamage(actor, target, multiplier);
+    const attackType = useSkill ? skillType : 'melee';
+    const damage = calcDamage(actor, target, multiplier, attackType);
 
     if (useSkill && skillType === 'magic') {
       playMagicHit();

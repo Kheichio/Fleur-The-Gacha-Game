@@ -47,11 +47,13 @@ const ART_STYLE: Record<string, { bg: string; glow: string }> = {
   Legendary: { bg: '#1a1000', glow: 'rgba(234,179,8,0.18)'   },
 };
 
+const RARITY_PRIORITY: Record<string, number> = { Legendary: 4, Epic: 3, Rare: 2, Common: 1 };
+
 function getClass(char: Character): string {
-  if (char.skill.type === 'magic') return char.stats.hp > 150 ? 'Battle Mage' : 'Mage';
-  if (char.stats.speed > 15) return 'Assassin';
-  if (char.stats.def > 13)   return 'Guardian';
-  if (char.stats.atk > 30)   return 'Warrior';
+  if (char.skill.type === 'magic') return char.stats.physDef > 14 ? 'Battle Mage' : 'Mage';
+  if (char.stats.critRate >= 14) return 'Assassin';
+  if (char.stats.physDef > 14)  return 'Guardian';
+  if (char.stats.physAtk > 26)  return 'Warrior';
   return 'Fighter';
 }
 
@@ -62,7 +64,13 @@ export default function CharacterScreen({ onBack }: Props) {
   const enhance      = useGameStore((s) => s.enhance);
   const buyXp        = useGameStore((s) => s.buyXp);
 
-  const owned = CHARACTER_POOL.filter((c) => ownedCounts[c.id] > 0);
+  const owned = CHARACTER_POOL
+    .filter((c) => ownedCounts[c.id] > 0)
+    .sort((a, b) => {
+      const prioDiff = RARITY_PRIORITY[b.rarity] - RARITY_PRIORITY[a.rarity];
+      if (prioDiff !== 0) return prioDiff;
+      return (characterData[b.id]?.level ?? 1) - (characterData[a.id]?.level ?? 1);
+    });
 
   const [selectedCharId, setSelectedCharId] = useState<string | null>(owned[0]?.id ?? null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
@@ -333,17 +341,20 @@ function OverviewTab({ char, scaled, prog, xpBarPct, canTrain, onTrain }: {
           Stats
         </div>
         {([
-          { icon: '❤️', label: 'HP',  value: scaled.hp    },
-          { icon: '⚔️', label: 'ATK', value: scaled.atk   },
-          { icon: '🛡️', label: 'DEF', value: scaled.def   },
-          { icon: '💨', label: 'SPD', value: scaled.speed },
+          { icon: '❤️', label: 'HP',       value: scaled.hp                   },
+          { icon: '⚔️', label: 'Phys ATK', value: scaled.physAtk              },
+          { icon: '✨', label: 'Mag ATK',  value: scaled.magAtk               },
+          { icon: '🛡️', label: 'Phys DEF', value: scaled.physDef              },
+          { icon: '🔮', label: 'Mag DEF',  value: scaled.magDef               },
+          { icon: '🎯', label: 'Crit %',   value: `${scaled.critRate}%`       },
+          { icon: '💨', label: 'Speed',    value: scaled.speed                },
         ] as const).map(({ icon, label, value }) => (
-          <div key={label} className="flex items-center justify-between border-b border-slate-800/40 py-3 last:border-0">
+          <div key={label} className="flex items-center justify-between border-b border-slate-800/40 py-2.5 last:border-0">
             <div className="flex items-center gap-2.5 text-slate-300">
-              <span className="w-5 text-center text-base">{icon}</span>
+              <span className="w-5 text-center text-sm">{icon}</span>
               <span className="text-sm font-medium">{label}</span>
             </div>
-            <span className="text-base font-bold text-white">{value}</span>
+            <span className="text-sm font-bold text-white">{value}</span>
           </div>
         ))}
       </div>
@@ -542,8 +553,8 @@ function EquipTab() {
         Equipment Slots
       </div>
       {[
-        { emoji: '⚔️', label: 'Weapon',    desc: 'Increases ATK' },
-        { emoji: '🛡️', label: 'Armour',    desc: 'Increases DEF' },
+        { emoji: '⚔️', label: 'Weapon',    desc: 'Increases ATK stats' },
+        { emoji: '🛡️', label: 'Armour',    desc: 'Increases DEF stats' },
         { emoji: '💍', label: 'Accessory', desc: 'Special effects' },
       ].map(({ emoji, label, desc }) => (
         <div

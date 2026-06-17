@@ -4,8 +4,8 @@ function foe(
   id: string,
   name: string,
   hp: number,
-  atk: number,
-  def: number,
+  physAtk: number,
+  physDef: number,
   speed: number,
   skillName = 'Ambush',
   mult = 1.6,
@@ -14,7 +14,7 @@ function foe(
     id,
     name,
     rarity: 'Common',
-    stats: { hp, atk, def, speed },
+    stats: { hp, physAtk, magAtk: 4, physDef, magDef: 4, critRate: 3, speed },
     skill: { name: skillName, multiplier: mult, cooldown: 3 },
   };
 }

@@ -35,7 +35,7 @@ export default function CharacterCard({ character, selected, onClick, count }: P
       <div className="text-sm font-semibold">{character.name}</div>
       <div className="text-xs opacity-80">{character.rarity}</div>
       <div className="text-[10px] opacity-70">
-        HP {character.stats.hp} / ATK {character.stats.atk}
+        HP {character.stats.hp} / ATK {character.stats.physAtk}
       </div>
       {count && count > 1 && <div className="text-[10px] opacity-60">x{count}</div>}
     </div>

@@ -22,9 +22,17 @@ export function buildTurnOrder(units: BattleUnit[]): BattleUnit[] {
   return [...units].sort((a, b) => b.character.stats.speed - a.character.stats.speed);
 }
 
-export function calcDamage(attacker: BattleUnit, defender: BattleUnit, multiplier: number): number {
-  const raw = attacker.character.stats.atk * multiplier - defender.character.stats.def * 0.5;
-  return Math.max(1, Math.round(raw));
+export function calcDamage(
+  attacker: BattleUnit,
+  defender: BattleUnit,
+  multiplier: number,
+  attackType: 'melee' | 'magic' = 'melee',
+): number {
+  const atk = attackType === 'magic' ? attacker.character.stats.magAtk : attacker.character.stats.physAtk;
+  const def = attackType === 'magic' ? defender.character.stats.magDef  : defender.character.stats.physDef;
+  const base = Math.max(1, Math.round(atk * multiplier - def * 0.5));
+  const isCrit = Math.random() * 100 < attacker.character.stats.critRate;
+  return isCrit ? Math.round(base * 1.5) : base;
 }
 
 export function pickTarget(candidates: BattleUnit[]): BattleUnit | undefined {
