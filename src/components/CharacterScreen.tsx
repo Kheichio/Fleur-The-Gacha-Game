@@ -61,13 +61,18 @@ function getClass(char: Character): string {
 export default function CharacterScreen({ onBack }: Props) {
   const ownedCounts  = useGameStore((s) => s.ownedCounts);
   const characterData = useGameStore((s) => s.characterData);
+  const activeTeamIds = useGameStore((s) => s.activeTeamIds);
   const coins        = useGameStore((s) => s.coins);
   const enhance      = useGameStore((s) => s.enhance);
   const buyXp        = useGameStore((s) => s.buyXp);
 
+  const partySet = new Set(activeTeamIds);
   const owned = CHARACTER_POOL
     .filter((c) => ownedCounts[c.id] > 0)
     .sort((a, b) => {
+      const aParty = partySet.has(a.id) ? 1 : 0;
+      const bParty = partySet.has(b.id) ? 1 : 0;
+      if (bParty !== aParty) return bParty - aParty;
       const lvDiff = (characterData[b.id]?.level ?? 1) - (characterData[a.id]?.level ?? 1);
       if (lvDiff !== 0) return lvDiff;
       return RARITY_PRIORITY[b.rarity] - RARITY_PRIORITY[a.rarity];

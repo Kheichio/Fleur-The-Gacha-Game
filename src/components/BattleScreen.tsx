@@ -34,13 +34,14 @@ const AREA_BACKGROUNDS: Record<string, string> = {
 
 const STAGE_AREA_MAP: Record<string, string> = {
   'stage-1': 'meadow',
-  'stage-2': 'forest',
+  'stage-2': 'meadow',
   'stage-3': 'ruins',
-  'stage-4': 'spire',
+  'stage-4': 'ruins',
   'stage-5': 'gate',
-  'enc-wolves': 'forest',
+  'enc-grass-wolves': 'meadow',
   'enc-bandits': 'crossroads',
-  'enc-mercenaries': 'bastion',
+  'enc-ruins-spirits': 'ruins',
+  'enc-mercenaries': 'crossroads',
   'town-bandits': 'town',
 };
 
