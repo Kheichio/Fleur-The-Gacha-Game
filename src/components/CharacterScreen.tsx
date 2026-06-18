@@ -4,7 +4,7 @@ import { CHARACTER_POOL } from '../data/characters';
 import { SLOT_EMOJI, STAT_LABELS } from '../data/equipment';
 import { effectiveStats, xpProgress, MAX_LEVEL, TRAIN_COST, TRAIN_XP } from '../systems/leveling';
 import type { Character, EquipmentItem, Stats } from '../types';
-import CurrencyBar from './CurrencyBar';
+import PageHeader from './PageHeader';
 
 interface Props {
   onBack: () => void;
@@ -89,19 +89,12 @@ export default function CharacterScreen({ onBack }: Props) {
   const artStyle = char ? ART_STYLE[char.rarity] : ART_STYLE.Common;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#070d1a] text-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#070d1a] text-slate-100">
+      <PageHeader title="Characters" onBack={onBack} />
+      <div className="flex flex-1 overflow-hidden">
 
       {/* ── Far-left nav icons ── */}
-      <nav className="flex w-20 flex-col items-center border-r border-slate-800/50 bg-slate-950/70 py-5">
-        <button
-          onClick={onBack}
-          className="mb-4 flex h-12 w-14 items-center justify-center gap-1 rounded-lg text-sm font-semibold text-slate-500 transition hover:bg-slate-800/60 hover:text-slate-200"
-          title="Back to Hub"
-        >
-          <span>←</span>
-          <span className="text-[10px]">Back</span>
-        </button>
-        <div className="mb-4 h-px w-12 bg-slate-800/80" />
+      <nav className="flex w-20 flex-col items-center border-r border-slate-800/50 bg-slate-950/70 py-3">
         {NAV_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -121,17 +114,6 @@ export default function CharacterScreen({ onBack }: Props) {
 
       {/* ── Info panel ── */}
       <div className="flex w-80 flex-col overflow-hidden border-r border-slate-800/50 bg-slate-950/40">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800/50 px-4 py-3">
-          <span
-            style={{ fontFamily: "'Cinzel', Georgia, serif" }}
-            className="text-xs font-bold uppercase tracking-wider text-slate-600"
-          >
-            Characters
-          </span>
-          <CurrencyBar />
-        </div>
-
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-4">
           {!char || !data || !scaled || !prog ? (
@@ -318,6 +300,7 @@ export default function CharacterScreen({ onBack }: Props) {
           })
         )}
       </aside>
+      </div>
     </div>
   );
 }

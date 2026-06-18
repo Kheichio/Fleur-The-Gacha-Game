@@ -3,7 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
 import { SLOT_EMOJI, STAT_LABELS, UPGRADE_COSTS } from '../data/equipment';
 import type { EquipmentItem, Rarity, StatKey } from '../types';
-import CurrencyBar from './CurrencyBar';
+import PageHeader from './PageHeader';
 
 interface Props {
   onBack: () => void;
@@ -101,20 +101,11 @@ export default function LuggageScreen({ onBack }: Props) {
   const selectedProtected = selected ? (!!selectedEquippedBy || !!selected.locked) : false;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#070d1a] text-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#070d1a] text-slate-100">
+      <PageHeader title="Luggage" onBack={onBack} />
+      <div className="flex flex-1 overflow-hidden">
       {/* Left: categories + sort */}
       <aside className="flex w-52 flex-col border-r border-slate-800/60 bg-slate-950/60">
-        <div className="border-b border-slate-800/60 p-4">
-          <h2 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-slate-100">
-            Luggage
-          </h2>
-          <p className="text-[10px] uppercase tracking-widest text-slate-600">Item Storage</p>
-        </div>
-
-        <div className="border-b border-slate-800/60 px-4 py-2">
-          <CurrencyBar />
-        </div>
-
         {/* Categories */}
         <div className="border-b border-slate-800/60 p-3">
           <div className="mb-2 text-[9px] font-bold uppercase tracking-wider text-slate-600">Category</div>
@@ -159,15 +150,6 @@ export default function LuggageScreen({ onBack }: Props) {
           </div>
         </div>
 
-        {/* Back */}
-        <div className="border-t border-slate-800/60 p-3">
-          <button
-            onClick={onBack}
-            className="w-full rounded-xl border border-slate-800 py-2 text-xs font-semibold text-slate-600 transition hover:text-slate-400"
-          >
-            ← Back to Hub
-          </button>
-        </div>
       </aside>
 
       {/* Center: item grid */}
@@ -382,6 +364,7 @@ export default function LuggageScreen({ onBack }: Props) {
           </div>
         )}
       </aside>
+      </div>
     </div>
   );
 }

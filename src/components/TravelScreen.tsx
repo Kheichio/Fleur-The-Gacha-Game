@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
 import { effectiveStats } from '../systems/leveling';
-import CurrencyBar from './CurrencyBar';
+import PageHeader from './PageHeader';
 
 interface MapNode {
   id: string;
@@ -250,21 +250,7 @@ export default function TravelScreen({ onBack, onBattle }: Props) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#070d1a] text-slate-100">
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-800/60 bg-slate-950/80">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="rounded-full border border-white/15 bg-black/40 px-4 py-1.5 text-sm font-semibold text-slate-300 transition hover:bg-black/60"
-          >
-            ← Back
-          </button>
-          <h2 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-xl font-bold text-amber-200">
-            Travel
-          </h2>
-        </div>
-        <CurrencyBar />
-      </div>
+      <PageHeader title="Travel" onBack={onBack} />
 
       {activeTeamIds.length < 3 && (
         <div className="flex-shrink-0 mx-5 mt-3 rounded-lg border border-yellow-700/40 bg-yellow-900/20 px-3 py-2 text-sm text-yellow-300">

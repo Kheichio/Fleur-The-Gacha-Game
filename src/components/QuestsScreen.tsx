@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/gameStore';
 import { CHARACTER_POOL } from '../data/characters';
 import { QUESTS, type QuestCheckData } from '../data/quests';
-import CurrencyBar from './CurrencyBar';
+import PageHeader from './PageHeader';
 
 interface Props {
   onBack: () => void;
@@ -37,20 +37,11 @@ export default function QuestsScreen({ onBack }: Props) {
   const claimedCount = claimedQuests.length;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#070d1a] text-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#070d1a] text-slate-100">
+      <PageHeader title="Quests" onBack={onBack} />
+      <div className="flex flex-1 overflow-hidden">
       {/* Left sidebar */}
       <aside className="flex w-56 flex-col border-r border-slate-800/60 bg-slate-950/60">
-        <div className="border-b border-slate-800/60 p-4">
-          <h2 style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-slate-100">
-            Quests
-          </h2>
-          <p className="text-[10px] uppercase tracking-widest text-slate-600">Missions & Rewards</p>
-        </div>
-
-        <div className="border-b border-slate-800/60 px-4 py-2">
-          <CurrencyBar />
-        </div>
-
         <div className="flex-1 p-4">
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 text-center">
             <div className="text-3xl font-black text-white">{claimedCount}</div>
@@ -62,15 +53,6 @@ export default function QuestsScreen({ onBack }: Props) {
               />
             </div>
           </div>
-        </div>
-
-        <div className="border-t border-slate-800/60 p-3">
-          <button
-            onClick={onBack}
-            className="w-full rounded-xl border border-slate-800 py-2 text-xs font-semibold text-slate-600 transition hover:text-slate-400"
-          >
-            ← Back to Hub
-          </button>
         </div>
       </aside>
 
@@ -128,6 +110,7 @@ export default function QuestsScreen({ onBack }: Props) {
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

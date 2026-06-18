@@ -6,6 +6,7 @@ import { SLOT_EMOJI, STAT_LABELS } from '../data/equipment';
 import { playLegendaryReveal } from '../systems/audio';
 import type { BannerType, Character, EquipmentItem, PullResult, Rarity } from '../types';
 import CurrencyBar from './CurrencyBar';
+import PageHeader from './PageHeader';
 
 interface Props {
   onBack: () => void;
@@ -198,11 +199,14 @@ export default function GachaScreen({ onBack }: Props) {
 
   return (
     <div
-      className="relative h-screen w-screen overflow-hidden text-slate-100"
+      className="relative h-screen w-screen flex flex-col overflow-hidden text-slate-100"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      <PageHeader title="Contract" onBack={onBack} />
+
       {/* ── Fullscreen banner track ── */}
+      <div className="relative flex-1 overflow-hidden">
       <div
         className="absolute inset-0 flex transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={{
@@ -213,27 +217,6 @@ export default function GachaScreen({ onBack }: Props) {
         {BANNER_CONFIGS.map((b) => (
           <BannerPanel key={b.id} banner={b} />
         ))}
-      </div>
-
-      {/* ── Overlaid UI ── */}
-
-      {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-5 py-4">
-        <button
-          onClick={onBack}
-          className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-sm font-semibold text-slate-300 backdrop-blur-sm transition hover:bg-black/60 hover:text-white"
-        >
-          ← Back
-        </button>
-        <span
-          style={{ fontFamily: "'Cinzel', Georgia, serif" }}
-          className="text-xs font-bold uppercase tracking-[0.3em] text-white/30"
-        >
-          Contract
-        </span>
-        <div className="rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm">
-          <CurrencyBar />
-        </div>
       </div>
 
       {/* Prev / Next arrows — big and noticeable */}
@@ -263,6 +246,7 @@ export default function GachaScreen({ onBack }: Props) {
         ))}
       </div>
 
+      </div>
       {/* Bottom pull controls — overlaid on banner */}
       <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-6 pb-5 pt-12">
         <div className="mb-1 text-center text-[11px] text-white/40">{banner.ratesText}</div>

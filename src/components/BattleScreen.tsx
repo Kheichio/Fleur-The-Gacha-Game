@@ -8,6 +8,7 @@ import type { BattleUnit } from '../types';
 import { buildTurnOrder, calcDamage, pickTarget, toBattleUnit } from '../systems/battle';
 import { effectiveStats } from '../systems/leveling';
 import { playMeleeHit, playMagicHit, playHeal } from '../systems/audio';
+import CurrencyBar from './CurrencyBar';
 
 interface Props {
   stageId: string;
@@ -285,20 +286,21 @@ export default function BattleScreen({ stageId, area, onExit }: Props) {
 
   return (
     <div className="flex h-screen flex-col bg-[#070d1a] text-slate-100 overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-800/60 bg-slate-950/80">
-        <div className="flex items-center gap-3">
-          <span style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-lg font-bold text-amber-200">
-            {stage.name}
-          </span>
-          <span className="rounded-full bg-slate-800/60 px-2.5 py-0.5 text-xs font-semibold text-slate-400">Round {round}</span>
-        </div>
+      {/* Header — consistent style */}
+      <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-800/60 bg-slate-950/80 px-5 py-3">
         <button
           onClick={() => { saveHpToStore(units); setStatus('lost'); }}
           className="rounded-lg border border-red-800/50 bg-red-950/50 px-4 py-1.5 text-sm font-semibold text-red-400 transition hover:bg-red-900/60"
         >
           Forfeit
         </button>
+        <div className="flex items-center gap-3">
+          <span style={{ fontFamily: "'Cinzel', Georgia, serif" }} className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
+            {stage.name}
+          </span>
+          <span className="rounded-full bg-slate-800/60 px-2.5 py-0.5 text-xs font-semibold text-slate-400">R{round}</span>
+        </div>
+        <CurrencyBar />
       </div>
 
       {/* Arena */}
