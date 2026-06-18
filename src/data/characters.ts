@@ -73,7 +73,7 @@ export const CHARACTER_POOL: Character[] = [
     stats: { hp: 135, physAtk: 22, magAtk: 5, physDef: 16, magDef: 10, critRate: 6, speed: 9 },
     skill: { name: 'Righteous Sweep', multiplier: 1.7, cooldown: 2, type: 'melee' },
     image: '/images/characters/casilda.png',
-    description: 'An ordinary woman from Solitaria who faces the extraordinary with her broom and an unbroken spirit. No power — only heart.',
+    description: 'A third-generation Solitaria migrant who lost everything — her parents, her land, her hope. Rescued from the streets by a three-year-old Róza, she became the girl\'s maid and closest companion. No magic, no divine blood — only a broom and unbreakable heart.',
   },
   {
     id: 'auxentios-brigach',
@@ -82,7 +82,7 @@ export const CHARACTER_POOL: Character[] = [
     stats: { hp: 140, physAtk: 28, magAtk: 6, physDef: 18, magDef: 12, critRate: 8, speed: 11 },
     skill: { name: "Brígach's Strike", multiplier: 2.0, cooldown: 3, type: 'melee' },
     image: '/images/characters/auxentios.png',
-    description: 'A kind-hearted swordsman of mixed Féinlárnach and Psevdìan blood. His blade is deliberate, his honour absolute, and his caution often the difference between life and death.',
+    description: 'A guard of Tesialyrodi and wielder of the Sword of Demon Remains, a family relic forged 150 years ago by his great-great-grandfather at the end of the Great War. Of mixed Féinlárnach and Psevdìan blood, his family fled south during the war. His blade is deliberate, his honour absolute.',
   },
   // Epic
   {
@@ -108,7 +108,7 @@ export const CHARACTER_POOL: Character[] = [
     stats: { hp: 115, physAtk: 38, magAtk: 8, physDef: 10, magDef: 8, critRate: 22, speed: 19 },
     skill: { name: 'Demon Gale Strike', multiplier: 2.5, cooldown: 3, type: 'melee' },
     image: '/images/characters/tomoe-yoshimi.png',
-    description: 'A Humanoid Demon of fierce honour. Her katana moves faster than the eye can follow, shielded by demonic barriers and driven by an unshakeable moral code.',
+    description: 'High General of the Demon Kingdom during the War Era, titled "The Strongest Demon General" by the Demon Lord himself. She mastered an ancient combat technique in weeks that takes others years. A demon of fierce honour who left the Kingdom when its leaders began to forget the old ways.',
   },
   {
     id: 'roza-defteros',
@@ -117,7 +117,7 @@ export const CHARACTER_POOL: Character[] = [
     stats: { hp: 105, physAtk: 10, magAtk: 40, physDef: 8, magDef: 14, critRate: 16, speed: 16 },
     skill: { name: 'Lustra Borealis', multiplier: 2.7, cooldown: 3, type: 'magic' },
     image: '/images/characters/roza.png',
-    description: 'A Psevdìan mage who invented Lustra Borealis — a field of light compressed to near-infinite density, travelling at the speed of itself. Curious, sincere, and quietly brilliant.',
+    description: 'Daughter of the Lord of Tesialyrodi, raised by the clergy and her maid Casilda. At six she began seeing visions of a prophecy — a tall woman with a golden eye cover and floating crown. When the sisters denied any knowledge of it, Róza set out on a pilgrimage to find the deity herself. Inventor of Lustra Borealis.',
   },
   // Legendary
   {
@@ -127,7 +127,7 @@ export const CHARACTER_POOL: Character[] = [
     stats: { hp: 185, physAtk: 15, magAtk: 48, physDef: 12, magDef: 28, critRate: 12, speed: 13 },
     skill: { name: "Theós's Radiance", multiplier: 3.0, cooldown: 4, type: 'magic' },
     image: '/images/characters/fleur-theos.png',
-    description: 'A Pure Elf Demi-God of immeasurable grace. In her true form she stands three metres tall and the world trembles. In her mortal guise she walks gently — but never unaware.',
+    description: 'A Pure Elf Mage who ended the Great War by creating No Man\'s Land — a scar of devastating magic between the Demon Kingdom and the Royal Kingdom. In her true form she stands three metres tall and the world trembles. In her mortal guise she walks gently — but never unaware.',
   },
   {
     id: 'anwaltin-von-berater',
