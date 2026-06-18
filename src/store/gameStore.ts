@@ -43,6 +43,14 @@ interface GameState {
   profile: PlayerProfile;
   claimedQuests: string[];
   currentHp: Record<string, number>;
+  readStories: string[];
+  lastLoginDate: string;
+  loginStreak: number;
+  claimedLoginDays: number[];
+  arenaTrophies: number;
+  arenaWins: number;
+  arenaLosses: number;
+  bannerTickets: number;
 
   pull: (count: number, banner: BannerType) => void;
   setTeam: (ids: string[]) => void;
@@ -64,6 +72,10 @@ interface GameState {
   claimQuest: (questId: string, reward: number) => void;
   updateHp: (hpMap: Record<string, number>) => void;
   restAtTown: (cost: number) => void;
+  markStoryRead: (storyId: string) => void;
+  claimDailyReward: (day: number, type: string, amount: number) => void;
+  addTrophies: (amount: number) => void;
+  recordArenaResult: (won: boolean) => void;
   wipeData: () => void;
 }
 
@@ -92,6 +104,14 @@ export const useGameStore = create<GameState>()(
       profile: { ...DEFAULT_PROFILE },
       claimedQuests: [],
       currentHp: {},
+      readStories: [],
+      lastLoginDate: '',
+      loginStreak: 0,
+      claimedLoginDays: [],
+      arenaTrophies: 0,
+      arenaWins: 0,
+      arenaLosses: 0,
+      bannerTickets: 0,
 
       pull: (count, banner) => {
         const state = get();
@@ -324,6 +344,42 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      markStoryRead: (storyId) => {
+        set((s) => {
+          const read = s.readStories ?? [];
+          if (read.includes(storyId)) return s;
+          return { readStories: [...read, storyId] };
+        });
+      },
+
+      claimDailyReward: (day, type, amount) => {
+        set((s) => {
+          const claimed = s.claimedLoginDays ?? [];
+          if (claimed.includes(day)) return s;
+          const updates: Partial<GameState> = { claimedLoginDays: [...claimed, day] };
+          if (type === 'coins') updates.coins = s.coins + amount;
+          else if (type === 'rubies') updates.rubies = s.rubies + amount;
+          else if (type === 'ticket') updates.bannerTickets = (s.bannerTickets ?? 0) + amount;
+          else if (type === 'item') {
+            const items = { ...s.items };
+            const itemId = amount <= 1 ? 'healing-herb' : 'strong-tonic';
+            items[itemId] = (items[itemId] ?? 0) + amount;
+            updates.items = items;
+          }
+          return updates;
+        });
+      },
+
+      addTrophies: (amount) => set((s) => ({ arenaTrophies: Math.max(0, (s.arenaTrophies ?? 0) + amount) })),
+
+      recordArenaResult: (won) => {
+        set((s) => ({
+          arenaWins: (s.arenaWins ?? 0) + (won ? 1 : 0),
+          arenaLosses: (s.arenaLosses ?? 0) + (won ? 0 : 1),
+          arenaTrophies: Math.max(0, (s.arenaTrophies ?? 0) + (won ? 30 : -15)),
+        }));
+      },
+
       wipeData: () => {
         set({
           coins: 1500,
@@ -344,6 +400,14 @@ export const useGameStore = create<GameState>()(
           profile: { ...DEFAULT_PROFILE },
           claimedQuests: [],
           currentHp: {},
+          readStories: [],
+          lastLoginDate: '',
+          loginStreak: 0,
+          claimedLoginDays: [],
+          arenaTrophies: 0,
+          arenaWins: 0,
+          arenaLosses: 0,
+          bannerTickets: 0,
         });
       },
     }),

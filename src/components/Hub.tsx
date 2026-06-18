@@ -1,6 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 
-type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage' | 'account' | 'quests';
+type NavScreen = 'contract' | 'party' | 'travel' | 'characters' | 'luggage' | 'account' | 'quests' | 'stories' | 'daily' | 'arena';
 
 
 interface Props {
@@ -106,23 +106,46 @@ export default function Hub({ onNavigate }: Props) {
         </button>
       </div>
 
-      {/* Bottom row — Luggage + Quests */}
+      {/* Row 3 — Luggage + Quests */}
       <div className="mt-3 grid w-full max-w-sm grid-cols-2 gap-3">
         <button
           onClick={() => onNavigate('luggage')}
-          className="group flex flex-col items-center gap-2 rounded-2xl border border-orange-500/30 bg-gradient-to-b from-orange-900/50 to-slate-900/80 px-5 py-5 shadow-lg transition duration-200 hover:scale-105 hover:border-orange-400/60 hover:from-orange-800/60"
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-orange-500/30 bg-gradient-to-b from-orange-900/50 to-slate-900/80 px-5 py-4 shadow-lg transition duration-200 hover:scale-105 hover:border-orange-400/60 hover:from-orange-800/60"
         >
-          <span className="text-4xl transition-transform duration-200 group-hover:scale-110">🧳</span>
-          <span className="text-base font-bold text-orange-200">Luggage</span>
-          <span className="text-[11px] font-normal text-orange-400/70">Items &amp; equipment</span>
+          <span className="text-3xl transition-transform duration-200 group-hover:scale-110">🧳</span>
+          <span className="text-sm font-bold text-orange-200">Luggage</span>
         </button>
         <button
           onClick={() => onNavigate('quests')}
-          className="group flex flex-col items-center gap-2 rounded-2xl border border-violet-500/30 bg-gradient-to-b from-violet-900/50 to-slate-900/80 px-5 py-5 shadow-lg transition duration-200 hover:scale-105 hover:border-violet-400/60 hover:from-violet-800/60"
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-violet-500/30 bg-gradient-to-b from-violet-900/50 to-slate-900/80 px-5 py-4 shadow-lg transition duration-200 hover:scale-105 hover:border-violet-400/60 hover:from-violet-800/60"
         >
-          <span className="text-4xl transition-transform duration-200 group-hover:scale-110">📋</span>
-          <span className="text-base font-bold text-violet-200">Quests</span>
-          <span className="text-[11px] font-normal text-violet-400/70">Earn rubies</span>
+          <span className="text-3xl transition-transform duration-200 group-hover:scale-110">📋</span>
+          <span className="text-sm font-bold text-violet-200">Quests</span>
+        </button>
+      </div>
+
+      {/* Row 4 — Stories, Daily, Arena */}
+      <div className="mt-3 grid w-full max-w-sm grid-cols-3 gap-3">
+        <button
+          onClick={() => onNavigate('stories')}
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-pink-500/30 bg-gradient-to-b from-pink-900/50 to-slate-900/80 px-3 py-4 shadow-lg transition duration-200 hover:scale-105 hover:border-pink-400/60 hover:from-pink-800/60"
+        >
+          <span className="text-3xl transition-transform duration-200 group-hover:scale-110">📖</span>
+          <span className="text-sm font-bold text-pink-200">Stories</span>
+        </button>
+        <button
+          onClick={() => onNavigate('daily')}
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-sky-500/30 bg-gradient-to-b from-sky-900/50 to-slate-900/80 px-3 py-4 shadow-lg transition duration-200 hover:scale-105 hover:border-sky-400/60 hover:from-sky-800/60"
+        >
+          <span className="text-3xl transition-transform duration-200 group-hover:scale-110">🎁</span>
+          <span className="text-sm font-bold text-sky-200">Daily</span>
+        </button>
+        <button
+          onClick={() => onNavigate('arena')}
+          className="group flex flex-col items-center gap-2 rounded-2xl border border-red-500/30 bg-gradient-to-b from-red-900/50 to-slate-900/80 px-3 py-4 shadow-lg transition duration-200 hover:scale-105 hover:border-red-400/60 hover:from-red-800/60"
+        >
+          <span className="text-3xl transition-transform duration-200 group-hover:scale-110">🏟️</span>
+          <span className="text-sm font-bold text-red-200">Arena</span>
         </button>
       </div>
 
